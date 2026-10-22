@@ -38,6 +38,8 @@ folder.
 | `--stdlib` | `EZT_STDLIB` | `package/libs` | Standard library folder |
 | `--model`, `--effort` | `EZT_AGENT_MODEL`, `EZT_AGENT_EFFORT` | `claude-opus-5-5` | Model for the AI tab |
 | `--no-ai` | | | Disable the AI tab even if a key is set |
+| `--srvman` | `EZT_SRVMAN` | | Address of the server cluster's srvman: adds the Cluster tab and deploy button ([cluster.md](cluster.md)) |
+| `--allow-live` | | | Allow brokerage connections that trade real money ([brokers.md](brokers.md)) |
 | | `ANTHROPIC_API_KEY` | | Enables the AI tab |
 
 The page loads three libraries from the jsDelivr CDN at pinned versions, so

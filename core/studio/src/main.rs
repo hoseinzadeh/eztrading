@@ -42,6 +42,10 @@ struct Args {
     #[arg(long, env = "EZT_AGENT_EFFORT")]
     effort: Option<String>,
 
+    /// Address of the cluster's service manager (srvman), e.g. 127.0.0.1:2022, to deploy strategies to the server cluster
+    #[arg(long, env = "EZT_SRVMAN")]
+    srvman: Option<String>,
+
     /// Turn the AI features off even if ANTHROPIC_API_KEY is set
     #[arg(long)]
     no_ai: bool,
@@ -105,6 +109,7 @@ async fn main() -> std::io::Result<()> {
         stdlib: stdlib_text,
         allowed_hosts: args.allow_host.clone(),
         live: live_manager.clone(),
+        cluster: studio::cluster::Cluster::new(args.srvman.clone()),
     });
 
     let url = format!("http://{}:{}/", if args.host == "0.0.0.0" { "localhost" } else { &args.host }, args.port);

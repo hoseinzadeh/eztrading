@@ -395,6 +395,14 @@ impl Connection {
         Ok(())
     }
 
+    /// Handle the packets the remote end pushes without being asked (e.g. prices from a
+    /// data server). The thread is joined on `disconnect`.
+    pub fn start_async_recv<F: Fn(Packet, SocketAddr) + Send + Sync + 'static>(&self, f: F) {
+        if let Some(srv) = &self.internal {
+            self.threads.lock().unwrap().push(srv.start_async_recv(f));
+        }
+    }
+
     pub fn request<T, R>(&self, data: T) -> Result<R, Status>
     where
         T: From<Packet> + Serialize,

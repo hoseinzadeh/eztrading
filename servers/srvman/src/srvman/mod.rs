@@ -1,7 +1,7 @@
 use com::chrono::NaiveDate;
 use com::mysql::prelude::Queryable;
 use com::mysql::{params, PooledConn};
-use com::net::{
+use com::net::{BotInfo,
     CodeSrvRep, CodeSrvReq, Connection, Handshake, JobId, JobSrvListReq, JobSrvRep, JobSrvReq,
     Packet, PluginId, Server, ServerConnection, SrvManError, SrvManListReq, SrvManRep, SrvManReq,
     UserId,
@@ -48,6 +48,11 @@ pub struct SrvMan {
 
     #[serde(skip)]
     db: Option<PooledConn>,
+
+    /// The index a job server got when it was added (it is what the server reports as its `--id`)
+    /// and its name in `system.toml`. Sorted by name, so it is the same after a restart.
+    #[serde(skip)]
+    jobsrv_by_index: HashMap<u32, String>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -83,6 +88,10 @@ pub struct DataServer {
     pub user: String,
     pub apikey: Option<String>,
     pub workspace: Option<String>,
+    /// Symbols streamed in real time (default: AAPL, BTC/USD)
+    pub symbols: Option<Vec<String>>,
+    pub cert: Option<String>,
+    pub key: Option<String>,
 
     #[serde(skip)]
     conn: Arc<Mutex<Option<Connection>>>,
@@ -200,11 +209,18 @@ impl SrvMan {
                 db.clone(),
                 apikey,
                 workspace,
+                datasrv.symbols.as_ref().map(|s| format!("--symbols {}", s.join(","))).unwrap_or_default(),
+                datasrv.cert.as_ref().map(|s| format!("--cert {s}")).unwrap_or_default(),
+                datasrv.key.as_ref().map(|s| format!("--key {s}")).unwrap_or_default(),
             ],
             datasrv.conn.clone(),
         ));
 
-        for (id, codesrv) in &this.servers.codesrv {
+        let mut next_index = 1u32; // datasrv is 0
+        let mut codesrvs: Vec<_> = this.servers.codesrv.iter().collect();
+        codesrvs.sort_by(|a, b| a.0.cmp(b.0));
+        for (id, codesrv) in codesrvs {
+            next_index += 1;
             let codesrv_addr = format!("{}:{}", codesrv.host, codesrv.port);
             srvman.add(RemoteServer::new(
                 &format!("codesrv-{id}"),
@@ -226,7 +242,12 @@ impl SrvMan {
             ));
         }
 
-        for (id, jobsrv) in &this.servers.jobsrv {
+        let mut jobsrvs: Vec<_> = this.servers.jobsrv.iter().collect();
+        jobsrvs.sort_by(|a, b| a.0.cmp(b.0));
+        let mut by_index = HashMap::new();
+        for (id, jobsrv) in jobsrvs {
+            by_index.insert(next_index, id.clone());
+            next_index += 1;
             let mut args = vec![
                 jobsrv.exec.clone(),
                 "--datasrv".to_owned(),
@@ -251,6 +272,7 @@ impl SrvMan {
             ));
         }
 
+        this.jobsrv_by_index = by_index;
         let (sys, threads) = srvman.start(
             format!("{}:{}", this.system.host, this.system.hb_port),
             this.ready.clone(),
@@ -559,6 +581,85 @@ impl com::db::Database for SrvMan {
     }
 }
 
+impl SrvMan {
+    /// The connection of any job server that is up (they all load the same plugins).
+    fn any_jobsrv(&mut self) -> Result<&mut Arc<Mutex<Option<Connection>>>, SrvManError> {
+        self.servers
+            .jobsrv
+            .values_mut()
+            .map(|j| &mut j.conn)
+            .find(|c| c.lock().map(|g| g.is_some()).unwrap_or(false))
+            .ok_or_else(|| SrvManError::Err(failed!("No JobSrv is running")))
+    }
+
+    fn list(&mut self, req: &SrvManListReq) -> Result<SrvManRep, SrvManError> {
+        use com::db::User;
+        match req {
+            SrvManListReq::Users => {
+                let Some(conn) = self.db.as_mut() else {
+                    return Err(SrvManError::Err(failed!("No DB Connection")));
+                };
+                let mut users: Vec<User> = User::download_all(conn).map_err(SrvManError::Err)?.into_values().collect();
+                users.sort_by_key(|u| u.id());
+                Ok(SrvManRep::Users(users))
+            }
+            SrvManListReq::Clients => {
+                let mut out = vec![];
+                let up = |c: &Arc<Mutex<Option<Connection>>>| if c.lock().map(|g| g.is_some()).unwrap_or(false) { "connected" } else { "down" };
+                out.push(format!("datasrv {}:{} {}", self.servers.datasrv.host, self.servers.datasrv.port, up(&self.servers.datasrv.conn)));
+                let mut cs: Vec<_> = self.servers.codesrv.iter().collect();
+                cs.sort_by(|a, b| a.0.cmp(b.0));
+                for (id, c) in cs {
+                    out.push(format!("codesrv-{id} {}:{} {}", c.host, c.port, up(&c.conn)));
+                }
+                let mut js: Vec<_> = self.servers.jobsrv.iter().collect();
+                js.sort_by(|a, b| a.0.cmp(b.0));
+                for (id, j) in js {
+                    out.push(format!("jobsrv-{id} {} capacity {} {}", j.host, j.cap.unwrap_or(1), up(&j.conn)));
+                }
+                Ok(SrvManRep::Clients(out))
+            }
+            SrvManListReq::Bots => {
+                let Some(conn) = self.db.as_mut() else {
+                    return Err(SrvManError::Err(failed!("No DB Connection")));
+                };
+                let rows: Vec<(u32, u32, u32, String, String, Option<u32>)> = conn
+                    .query("SELECT bots.id, bots.user_id, bots.plugin_id, plugins.name, bots.machine, bots.server_id FROM bots INNER JOIN plugins ON plugins.id = bots.plugin_id ORDER BY bots.id")
+                    .map_err(|e| SrvManError::Err(failed!(e)))?;
+                Ok(SrvManRep::Bots(
+                    rows.into_iter()
+                        .map(|(id, user_id, plugin_id, plugin_name, json, server)| BotInfo {
+                            id,
+                            user_id,
+                            plugin_id,
+                            plugin_name,
+                            machine: serde_json::from_str::<com::data::Machine>(&json).map(|m| m.name).unwrap_or_default(),
+                            server,
+                        })
+                        .collect(),
+                ))
+            }
+            SrvManListReq::Plugins => {
+                let conn = self.any_jobsrv()?;
+                Self::jobsrv_request(conn, 0, JobSrvReq::List(JobSrvListReq::AllPlugins))
+            }
+            SrvManListReq::Machines => {
+                let conn = self.any_jobsrv()?;
+                Self::jobsrv_request(conn, 0, JobSrvReq::List(JobSrvListReq::Machines))
+            }
+            SrvManListReq::PluginMachines(plugin) => {
+                let id: PluginId = plugin.parse().map_err(|_| SrvManError::Err(failed!("give the plugin id (see `list plugins`)")))?;
+                let conn = self.any_jobsrv()?;
+                Self::jobsrv_request(conn, 0, JobSrvReq::List(JobSrvListReq::PluginMachines(id)))
+            }
+            SrvManListReq::MachineParams(machine) => {
+                let conn = self.any_jobsrv()?;
+                Self::jobsrv_request(conn, 0, JobSrvReq::List(JobSrvListReq::MachineParams(machine.clone())))
+            }
+        }
+    }
+}
+
 impl Server for SrvMan {
     type Error = SrvManError;
     type Reply = SrvManRep;
@@ -586,18 +687,29 @@ impl Server for SrvMan {
             SrvManReq::Launch(_, _) => {
                 self.submit(Deployment, req, req_ch.clone(), Self::idle_first)
             }
-            SrvManReq::List(SrvManListReq::Machines) => {
-                if let Some((_, jobsrv)) = self.servers.jobsrv.iter_mut().last() {
-                    Self::jobsrv_request(
-                        &mut jobsrv.conn,
-                        0,
-                        JobSrvReq::List(JobSrvListReq::Machines),
-                    )
-                } else {
-                    Err(SrvManError::Err(failed!("No JobSrv is running")))
-                }
+            SrvManReq::List(list) => self.list(list),
+            SrvManReq::Stop(run_id) => {
+                let Some(conn) = self.db.as_mut() else {
+                    return Err(SrvManError::Err(failed!("No DB Connection")));
+                };
+                let server: Option<Option<u32>> = conn
+                    .exec_first("SELECT server_id FROM bots WHERE id = :id", params! { "id" => run_id })
+                    .map_err(|e| SrvManError::Err(failed!(e)))?;
+                let Some(server) = server else {
+                    return Err(SrvManError::Err(failed!(format!("No bot {run_id} is running"))));
+                };
+                let target = match server {
+                    Some(id) => match self.jobsrv_by_index.get(&id).cloned() {
+                        Some(name) => self.servers.jobsrv.get_mut(&name).map(|j| &mut j.conn),
+                        None => None,
+                    },
+                    None => None,
+                };
+                let Some(conn) = target else {
+                    return Err(SrvManError::Err(failed!(format!("The server of bot {run_id} is not known to this srvman"))));
+                };
+                Self::jobsrv_request(conn, 0, JobSrvReq::Stop(*run_id))
             }
-            SrvManReq::List(_) => todo!(),
             SrvManReq::Shutdown => Err(SrvManError::Shutdown),
             SrvManReq::Subscribe(user_id, plugin_id, renew, expire) => {
                 self.subscribe(*user_id, *plugin_id, *renew, *expire)

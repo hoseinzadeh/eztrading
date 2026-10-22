@@ -16,6 +16,10 @@ impl Scheduler {
         self.handle
     }
 
+    pub fn forget_machine(&mut self, handle: *mut c_void) {
+        self.running_machines.retain(|m| *m != handle);
+    }
+
     pub fn add_machine(&mut self, machine_handle: *mut c_void) -> Result<(), Status> {
         if machine_handle.is_null() {
             Err(failed!("Could not run the machine"))

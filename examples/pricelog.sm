@@ -1,0 +1,18 @@
+// Prints every price update it receives. Handy to check that a cluster delivers prices end to end.
+
+use std::*;
+
+machine PriceLog {
+    param equities: Vec<Symbol> as "Equities";
+
+    init { launch (watch(sym), SHOW) for sym in equities; }
+
+    process watch(sym: Symbol) every 1 min {
+        listen Tickers[sym];
+
+        state SHOW: goto SHOW {
+            let price: float = Tickers[sym].close * 1.0;
+            printf("price %f\n", price);
+        }
+    }
+}

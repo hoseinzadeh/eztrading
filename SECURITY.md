@@ -23,6 +23,14 @@ cannot promise a response time.
 * Keep `system.toml`, `.env` files and everything in `secret/` out of version
   control (they are git-ignored).
 
+## The server cluster
+
+`srvman`, `datasrv`, `jobsrv` and `codesrv` talk over plain sockets with a handshake token only, and
+`srvman` starts them over SSH. Anyone who can reach srvman can upload, build and launch strategies, and
+strategies compile to native code, so the cluster must stay on a private network. Studio refuses
+strategies with inline C++ when deploying to the cluster, but it has no login either: do not expose a
+Studio that is connected to a cluster. See [docs/cluster.md](docs/cluster.md).
+
 ## Strategy Studio deployments
 
 Studio can keep deployments running on the server, on a simulated account or

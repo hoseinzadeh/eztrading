@@ -165,8 +165,13 @@ impl Plugin {
 
     pub fn upload(self, txn: &mut Transaction) -> Result<Self, Status> {
         convert!(txn.exec_drop(
-            r"REPLACE INTO plugins (id, user_id, name, source, machines, lib, version, price, date, published)
-              VALUES (:id, :user_id, :name, :source, :machines, :lib, :version, :price, :date, :published)",
+            // not REPLACE: that deletes the row first, which would also delete the bots and
+            // subscriptions that refer to the plugin
+            r"INSERT INTO plugins (id, user_id, name, source, machines, lib, version, price, date, published)
+              VALUES (:id, :user_id, :name, :source, :machines, :lib, :version, :price, :date, :published)
+              ON DUPLICATE KEY UPDATE user_id = VALUES(user_id), name = VALUES(name), source = VALUES(source),
+                  machines = VALUES(machines), lib = VALUES(lib), version = VALUES(version), price = VALUES(price),
+                  date = VALUES(date), published = VALUES(published)",
             params! {
                 "id" => self.id,
                 "user_id" => self.user_id,

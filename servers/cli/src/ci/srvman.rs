@@ -43,6 +43,7 @@ impl CommandInterface for SrvManCI {
                 )
                 .add(Arg::new_str("plugin", None))
                 .add(Arg::new("plugins"))
+                .add(Arg::new("bots"))
                 .add(Arg::new("machines"))
                 .add(Arg::new("users"))
                 .add(Arg::new("servers")),
@@ -56,6 +57,7 @@ impl CommandInterface for SrvManCI {
                     use com::net::{SrvManListReq::*, SrvManReq::*};
                     match args[0].name.as_str() {
                         "plugins" => term.request(List(Plugins)),
+                        "bots" => term.request(List(Bots)),
                         "machines" => term.request(List(Machines)),
                         "users" => term.request(List(Users)),
                         "servers" => term.request(List(Clients)),
@@ -272,13 +274,27 @@ impl CommandInterface for SrvManCI {
             "Launch a machine for a given user",
             Args::new()
                 .add(Arg::new_str("", None))
-                .add(Arg::new_int("--user", None)),
+                .add(Arg::new_int("--user", None))
+                .add(Arg::new_str("--set", None)),
             |args, term, _| {
                 if let Some((Value::Str(Some(m)), _)) = args.get("") {
                     if let Some((Value::Int(Some(u)), _)) = args.get("--user") {
                         if let Some(m) = unsafe { MACHINES.lock() }.unwrap().get(m) {
+                            let mut m = m.clone();
+                            // --set "equities=AAPL,MSFT invest=500"
+                            if let Some((Value::Str(Some(sets)), _)) = args.get("--set") {
+                                for pair in sets.split_whitespace() {
+                                    let Some((k, v)) = pair.split_once('=') else {
+                                        return Err(failed!(format!("expected name=value, found `{pair}`")));
+                                    };
+                                    match m.params.iter_mut().find(|p| p.id == k) {
+                                        Some(p) => p.set_value(v).map_err(|e| failed!(format!("{k}: {e}")))?,
+                                        None => return Err(failed!(format!("the machine has no parameter `{k}`"))),
+                                    }
+                                }
+                            }
                             if let Err(Status::Failed(e)) = term
-                                .request(SrvManReq::Launch(*u as u32, m.clone()))
+                                .request(SrvManReq::Launch(*u as u32, m))
                                 .map(|rep: SrvManRep| {
                                     if let SrvManRep::Submitted(jobs) = rep {
                                         resprintln!(
@@ -305,6 +321,23 @@ impl CommandInterface for SrvManCI {
                     }
                 } else {
                     Err(failed!("No machine name is provided"))
+                }
+            },
+        ));
+
+        list.push(Executable::new(
+            "stop",
+            None,
+            "Stop a running bot (see `list bots`)",
+            Args::new().add(Arg::new_int("", None)),
+            |args, term, _| {
+                if let Some((id, _)) = args.get("") {
+                    term.request(SrvManReq::Stop(convert!(id.try_into())?)).map(|rep: SrvManRep| {
+                        resprintln!("{rep:?}");
+                        0
+                    })
+                } else {
+                    Err(failed!("No bot id supplied"))
                 }
             },
         ));

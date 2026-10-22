@@ -33,6 +33,18 @@ struct Args {
     #[arg(long, short('k'), env = "TWELVEDATA_API_KEY", hide_env_values = true)]
     apikey: String,
 
+    /// Symbols to stream in real time (comma-separated)
+    #[arg(long, default_value_t = String::from("AAPL,BTC/USD"))]
+    symbols: String,
+
+    /// TLS certificate for the data server's own websocket
+    #[arg(long, default_value_t = String::from("secret/cert.pem"))]
+    cert: String,
+
+    /// TLS key for the data server's own websocket
+    #[arg(long, default_value_t = String::from("secret/key.rsa"))]
+    key: String,
+
     /// The IP address of SrvMan (e.g., "127.0.0.1:2030")
     #[arg(long)]
     srvman: Option<String>,
@@ -51,7 +63,8 @@ fn main() -> Result<(), Status> {
         args.srvman.map(|a| (a, args.id.expect("id is required"))),
         &args.workspace,
         &apikey,
-        "secret/cert.pem", "secret/key.rsa", ([0,0,0,0], 9231)
+        args.symbols.split(',').map(|s| s.trim().to_owned()).filter(|s| !s.is_empty()).collect(),
+        &args.cert, &args.key, ([0,0,0,0], 9231)
     )?;
 
     datasrv.start();

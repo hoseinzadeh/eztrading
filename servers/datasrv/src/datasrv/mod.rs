@@ -32,6 +32,7 @@ impl<P: Provider + Default> DataSrv<P> {
         srvman: Option<(String, usize)>,
         workspace: &str,
         api_key: &str,
+        symbols: Vec<String>,
         cert: &str,
         key: &str,
         addr: impl Into<SocketAddr>,
@@ -53,7 +54,7 @@ impl<P: Provider + Default> DataSrv<P> {
             while is_working_clone.load(Relaxed) {
                 match P::launch(
                     format!("{workspace}/twelvedata").as_str(),
-                    vec!["AAPL", "BTC/USD"],
+                    symbols.iter().map(|s| s.as_str()).collect(),
                     api_key.clone(),
                     &cert,
                     &key,

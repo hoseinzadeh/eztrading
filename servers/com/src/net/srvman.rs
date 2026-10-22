@@ -72,6 +72,9 @@ pub enum SrvManReq {
     /// Unsubscribe a user from a plugin
     Unsubscribe(UserId, PluginId),
 
+    /// Stop a running bot (by the id `list bots` shows)
+    Stop(RunId),
+
     /// Shutdown the server
     Shutdown,
 }
@@ -96,6 +99,12 @@ pub enum SrvManRep {
     /// Replay with a list of clients
     Clients(Vec<String>),
 
+    /// Replay with the registered users
+    Users(Vec<crate::db::User>),
+
+    /// Replay with the stored bots
+    Bots(Vec<BotInfo>),
+
     /// Replay received from a CodeSrv
     CodeSrv(JobId, CodeSrvRep),
 
@@ -116,6 +125,9 @@ pub enum SrvManListReq {
 
     /// Return the list of all connected clients (usually Job Servers)
     Clients,
+
+    /// Return the bots that are running (stored in the database)
+    Bots,
 
     /// Return the list of all loaded plug-ins
     Plugins,
@@ -145,4 +157,16 @@ impl From<SrvManError> for SrvManRep {
     fn from(e: SrvManError) -> Self {
         SrvManRep::Error(e)
     }
+}
+
+/// A launched machine (a "bot") as stored in the database.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct BotInfo {
+    pub id: RunId,
+    pub user_id: UserId,
+    pub plugin_id: PluginId,
+    pub plugin_name: PluginName,
+    pub machine: MachineName,
+    /// The job server it runs on
+    pub server: Option<u32>,
 }

@@ -1,5 +1,6 @@
 pub mod analyze;
 pub mod brokers;
+pub mod cluster;
 pub mod ast;
 pub mod diagram;
 pub mod feed;

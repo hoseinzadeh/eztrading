@@ -19,6 +19,10 @@ pub struct User {
 }
 
 impl User {
+    pub fn id(&self) -> u32 {
+        self.id
+    }
+
     pub fn new(
         name: String,
         lastname: Option<String>,

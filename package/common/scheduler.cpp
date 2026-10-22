@@ -203,6 +203,8 @@ struct Plugin {
 };
 
 extern "C" void *new_scheduler() {
+    // strategies print with printf; show their output line by line even when stdout is a file
+    setvbuf(stdout, nullptr, _IOLBF, 0);
     return new Scheduler;
 }
 
@@ -269,6 +271,23 @@ extern "C" sml::machine *launch_machine(const Plugin *plugin, uint32_t user_id,
         Scheduler *scheduler, const char *model_name, char *machine_json) {
     printf("plugin: %p, user: %u, sch: %p, model: %s\n", plugin, user_id, scheduler, model_name);
     return plugin->launch(user_id, scheduler, model_name, machine_json);
+}
+
+extern "C" bool update_ticker(const Plugin *plugin, const char *symbol, int64_t timestamp, float open,
+                              float high, float low, float close, int volume,
+                              Scheduler **schedulers, size_t count) {
+    void (*set)(const char*, int64_t, float, float, float, float, int);
+    void (*emit)(const char*, Scheduler*);
+    *(void**)(&set) = dlsym(plugin->handle, "ezt_set_ticker");
+    *(void**)(&emit) = dlsym(plugin->handle, "ezt_emit_ticker");
+    if (!set || !emit) return false;
+    set(symbol, timestamp, open, high, low, close, volume);
+    for (size_t i = 0; i < count; i++) emit(symbol, schedulers[i]);
+    return true;
+}
+
+extern "C" void stop_machine(sml::machine *machine) {
+    if (machine) machine->die();
 }
 
 extern "C" size_t job_count(Scheduler *scheduler) {

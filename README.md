@@ -112,14 +112,15 @@ cargo run -p srvman
 
 Requirements and caveats you should know about before trying:
 
-* **MySQL.** The servers use a MySQL database named `eztrading` (users,
-  permissions, plugins, ...). **The schema is not in this repository yet**, so
-  a fresh database will not work until it is added. This is the biggest gap.
+* **MySQL.** The servers use a MySQL/MariaDB database named `eztrading`. Load
+  `db/schema.sql` (reconstructed from the queries in the code) before starting.
 * **C++ toolchain.** Building strategy plugins runs `pack.sh` and `make`, which
-  need `clang` and (on Linux) `g++-10`. The paths in `package/Makefile` and
-  `pack.sh` assume a Unix system; `compile` itself is portable.
-* The platform as a whole has **not been run end to end** as part of
-  open-sourcing; the pieces that are tested are listed below.
+  need `clang` and a C++20 `g++`. The paths in `package/Makefile` and `pack.sh`
+  assume a Unix system; `compile` itself is portable.
+* **SSH.** srvman starts the other servers over SSH, so key-based login to the
+  configured user and host must work (also for `localhost`).
+* [docs/cluster.md](docs/cluster.md) has the full setup, how to use the cluster
+  from the CLI and Studio (`--srvman`), and what was and was not tested.
 
 ## Project status
 
@@ -130,7 +131,7 @@ Requirements and caveats you should know about before trying:
 | Live deployments | Run inside Studio on a simulated account; restart recovery is tested bit for bit. The Twelve Data feed was tested only against a local stand-in, not the real service. Not connected to `srvman`/`jobsrv` ([docs/live.md](docs/live.md)). |
 | Brokerage connections | A `Broker` trait, a paper broker, a declarative REST adapter, limits, kill switch and replay-based recovery ([docs/brokers.md](docs/brokers.md)). Tested only against two local imitations of brokerage APIs; the shipped Alpaca and Tradier descriptions are **unverified** against the real services. Real-money use is gated behind `--allow-live`. |
 | Strategy Studio | Unit-tested (parser, analysis, diagram, simulator, tests, API) and driven end to end in a real browser. The simulator is a preview of the C++ runtime, not the runtime itself (see [docs/studio.md](docs/studio.md#what-the-simulator-does-and-does-not-do)). |
-| `srvman`, `datasrv`, `jobsrv`, `codesrv`, `cli` | Compile. Not tested end to end (needs MySQL schema, see above). |
+| `srvman`, `datasrv`, `jobsrv`, `codesrv`, `cli` | Run end to end on one machine (upload, compile, load, launch, prices, restart recovery, CLI and Studio) with `db/schema.sql` and a local stand-in for Twelve Data. Not tested on several machines, with the real Twelve Data service, under load or for long. No authentication between clients and servers. See [docs/cluster.md](docs/cluster.md). |
 
 Known limitations and a good place to start contributing: the missing database
 schema, semantic checks in the compiler, a larger SML standard library

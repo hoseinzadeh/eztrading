@@ -46,6 +46,12 @@ public:
         for (Worker *j: attached_jobs) scheduler->submit(j);
     }
 
+    /// Wake only the attached jobs that run on `scheduler`
+    inline void emit_to(Scheduler *scheduler) const {
+        std::shared_lock lock(mutex_);
+        for (Worker *j: attached_jobs) if (j->owned_by(scheduler)) scheduler->submit(j);
+    }
+
     // Check if the __update_time date is greater or equal to the job's previous cycle
     bool changed(Worker *job) const {
         // If the change was during the previous cycle, it can be caught

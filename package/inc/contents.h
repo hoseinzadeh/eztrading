@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <vector>
 #include <string>
 #include <unordered_map>
@@ -39,6 +40,33 @@ namespace __contents {
         T r;
         std::memcpy((void*)(&r), (void*)(a.data), a.size);
         return r;
+    }
+
+    /// Symbol lists cannot cross the process boundary as raw memory, so they travel as
+    /// comma-separated text ("AAPL,MSFT") inside the 128 bytes of an `any`.
+    template <>
+    inline any mk_any<std::vector<std::string>>(std::vector<std::string> list) {
+        any a;
+        std::string text;
+        for (auto &s: list) { if (!text.empty()) text += ','; text += s; }
+        if (text.size() > sizeof(a.data)) text.resize(sizeof(a.data));
+        std::memset(a.data, 0, sizeof(a.data));
+        std::memcpy(a.data, text.data(), text.size());
+        a.size = (int)text.size();
+        return a;
+    }
+
+    template <>
+    inline std::vector<std::string> from_any<std::vector<std::string>>(any a) {
+        std::vector<std::string> list;
+        std::string cur;
+        for (int i = 0; i < a.size && i < (int)sizeof(a.data); i++) {
+            char c = (char)a.data[i];
+            if (c == ',') { if (!cur.empty()) list.push_back(cur); cur.clear(); }
+            else cur += c;
+        }
+        if (!cur.empty()) list.push_back(cur);
+        return list;
     }
 
     struct param {

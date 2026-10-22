@@ -876,8 +876,149 @@ function setView(view) {
   document.querySelector('.file-actions').hidden = view !== 'editor';
   document.querySelector('.run-actions').hidden = view !== 'editor';
   $('live-view').hidden = view !== 'live';
+  $('cluster-view').hidden = view !== 'cluster';
+  $('view-cluster').classList.toggle('active', view === 'cluster');
   clearTimeout(live.timer);
+  clearTimeout(cluster.timer);
   if (view === 'live') liveLoop(true);
+  if (view === 'cluster') clusterLoop(true);
+}
+
+// ---- server cluster (srvman) ------------------------------------------------------------
+const cluster = { configured: false, data: null, timer: 0, task: null };
+
+function clusterLoop(immediate) {
+  clearTimeout(cluster.timer);
+  const run = async () => {
+    if (live.view !== 'cluster') return;
+    if (!document.hidden) { try { await refreshCluster(); } catch (e) { $('cluster-offline').hidden = false; $('cluster-offline').textContent = e.message; } }
+    cluster.timer = setTimeout(run, 3000);
+  };
+  cluster.timer = setTimeout(run, immediate ? 0 : 3000);
+}
+
+async function initCluster() {
+  try {
+    const d = await api('GET', '/api/cluster');
+    cluster.configured = !!d.configured;
+  } catch { cluster.configured = false; }
+  $('view-cluster').hidden = !cluster.configured;
+  $('btn-cluster-deploy').hidden = !cluster.configured;
+}
+
+async function refreshCluster() {
+  const d = await api('GET', '/api/cluster');
+  cluster.data = d;
+  const off = $('cluster-offline');
+  off.hidden = d.connected !== false && !(d.problems && d.problems.length);
+  off.textContent = d.connected === false ? `Cannot reach srvman at ${d.addr}: ${d.error}` : (d.problems || []).join('\n');
+  $('cluster-addr').textContent = d.addr || '';
+  const servers = $('cluster-servers');
+  servers.textContent = '';
+  for (const s of d.servers || []) {
+    const down = /down$/.test(s);
+    servers.append(el('li', { className: down ? 'down' : 'up', textContent: (down ? '✖ ' : '● ') + s }));
+  }
+  const bots = document.querySelector('#cluster-bots tbody');
+  bots.textContent = '';
+  const users = new Map((d.users || []).map((u) => [u.id, `${u.name} ${u.lastname || ''}`.trim()]));
+  for (const b of d.bots || []) {
+    const tr = el('tr');
+    const stop = el('button', { className: 'btn danger', textContent: 'Stop' });
+    stop.addEventListener('click', async () => {
+      const ok = await choose({ title: `Stop bot ${b.id}?`, text: 'The bot stops and is removed from the database.', options: [{ id: 'yes', label: 'Stop it', cls: 'danger' }] });
+      if (!ok) return;
+      try { await api('POST', `/api/cluster/bots/${b.id}/stop`, {}); say(`Stopped bot ${b.id}`, 'ok'); } catch (e) { say(e.message, 'err'); }
+      refreshCluster().catch(() => {});
+    });
+    const act = el('td'); act.append(stop);
+    tr.append(el('td', { textContent: String(b.id) }), el('td', { textContent: b.plugin_name }), el('td', { textContent: b.machine.replace(/^.*::/, '') }), el('td', { textContent: users.get(b.user_id) || String(b.user_id) }), el('td', { textContent: b.server == null ? '–' : String(b.server) }), act);
+    bots.append(tr);
+  }
+  if (!(d.bots || []).length) { const tr = el('tr'); tr.append(el('td', { colSpan: 6, className: 'muted', textContent: 'No bots are running.' })); bots.append(tr); }
+  const plugins = document.querySelector('#cluster-plugins tbody');
+  plugins.textContent = '';
+  for (const p of d.plugins || []) {
+    const tr = el('tr');
+    tr.append(el('td', { textContent: String(p.id) }), el('td', { textContent: p.name }), el('td', { textContent: p.owner }), el('td', { textContent: p.machines.map((m) => m.name).join(', ') }), el('td', { textContent: p.version }));
+    plugins.append(tr);
+  }
+  if (!(d.plugins || []).length) { const tr = el('tr'); tr.append(el('td', { colSpan: 5, className: 'muted', textContent: 'No plugins yet.' })); plugins.append(tr); }
+  const tasks = await api('GET', '/api/cluster/tasks');
+  const tl = $('cluster-tasks');
+  tl.textContent = '';
+  for (const t of tasks.tasks) {
+    const li = el('li');
+    li.append(el('div', { className: 'bn', textContent: t.name + (t.done ? (t.error ? ' — failed' : ' — done') : ' — running…') }));
+    for (const s of t.steps) li.append(el('div', { className: 'bd step-' + s.status, textContent: `${s.status === 'ok' ? '✓' : s.status === 'failed' ? '✖' : '…'} ${s.label}${s.detail ? ': ' + s.detail : ''}` }));
+    tl.append(li);
+  }
+  if (!tasks.tasks.length) tl.append(el('li', { className: 'muted', textContent: 'Nothing deployed from here yet.' }));
+  const n = (d.bots || []).length;
+  $('cluster-pill').hidden = !n;
+  $('cluster-pill').textContent = String(n);
+  $('cluster-pill').className = 'pill run';
+}
+
+async function openClusterDeploy() {
+  if (!editor) return;
+  const a = state.analysis;
+  if (!a || !a.ok) { say('Fix the syntax error before deploying.', 'err'); return; }
+  const errors = (a.diagnostics || []).filter((d) => d.severity === 'error');
+  if (errors.length) { say(`Fix ${errors.length} error(s) before deploying: ${errors[0].message}`, 'err'); return; }
+  let d;
+  try { d = await api('GET', '/api/cluster'); } catch (e) { say(e.message, 'err'); return; }
+  if (d.connected === false) { say(`Cannot reach srvman at ${d.addr}: ${d.error}`, 'err'); return; }
+  cluster.data = d;
+  const base = (state.file ? baseName(state.file) : 'strategy').replace(/[^A-Za-z0-9_-]/g, '_');
+  $('cl-name').value = base;
+  $('cl-source').textContent = `${state.file || 'unsaved buffer'}${state.dirty ? ' (includes unsaved changes)' : ''}`;
+  const ms = $('cl-machine');
+  ms.textContent = '';
+  for (const m of a.machines || []) ms.append(el('option', { value: m, textContent: m }));
+  if (state.machine) ms.value = state.machine;
+  const us = $('cl-user');
+  us.textContent = '';
+  for (const u of d.users || []) us.append(el('option', { value: u.id, textContent: `${u.name} ${u.lastname || ''} (#${u.id})` }));
+  renderParams(a.params || [], 'cl-params');
+  $('cl-steps').textContent = '';
+  $('cl-error').hidden = true;
+  $('cl-submit').disabled = false;
+  $('cluster-modal').hidden = false;
+  $('cl-name').focus();
+}
+
+async function submitClusterDeploy(ev) {
+  ev.preventDefault();
+  const params = {};
+  for (const [k, v] of Object.entries(readParams('cl-params'))) params[k] = Array.isArray(v) ? v.join(',') : String(v);
+  $('cl-submit').disabled = true;
+  $('cl-error').hidden = true;
+  const steps = $('cl-steps');
+  steps.textContent = '';
+  try {
+    const { task } = await api('POST', '/api/cluster/deploy', { user: Number($('cl-user').value), name: $('cl-name').value.trim(), source: editor.getValue(), machine: $('cl-machine').value, params });
+    for (;;) {
+      const t = await api('GET', `/api/cluster/tasks/${task}`);
+      steps.textContent = '';
+      for (const s of t.steps) {
+        const li = el('li');
+        li.append(el('b', { className: s.status === 'ok' ? 'ok' : s.status === 'failed' ? 'no' : '', textContent: s.status === 'ok' ? '✓' : s.status === 'failed' ? '✖' : '…' }), el('span', { textContent: `${s.label}${s.detail ? ': ' + s.detail : ''}` }));
+        steps.append(li);
+      }
+      if (t.done) {
+        if (t.error) { $('cl-error').hidden = false; $('cl-error').textContent = t.error; }
+        else say(`Bot ${t.bot ?? ''} is running on the cluster`, 'ok');
+        break;
+      }
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+  } catch (e) {
+    $('cl-error').hidden = false;
+    $('cl-error').textContent = e.message;
+  } finally {
+    $('cl-submit').disabled = false;
+  }
 }
 
 function setOffline(flag) { $('live-offline').hidden = !flag; }
@@ -1579,6 +1720,10 @@ function wire() {
   $('view-editor').addEventListener('click', () => setView('editor'));
   $('view-live').addEventListener('click', () => setView('live'));
   $('btn-deploy').addEventListener('click', openDeploy);
+  $('view-cluster').addEventListener('click', () => setView('cluster'));
+  $('btn-cluster-deploy').addEventListener('click', openClusterDeploy);
+  $('cluster-form').addEventListener('submit', submitClusterDeploy);
+  $('cl-cancel').addEventListener('click', () => { $('cluster-modal').hidden = true; if (live.view === 'cluster') refreshCluster().catch(() => {}); });
   $('live-new').addEventListener('click', () => { setView('editor'); openDeploy(); });
   $('dp-feed').addEventListener('change', updateDeployFields);
   $('dp-exec').addEventListener('change', () => { updateExecFields(); if ($('dp-feed').value === 'broker') updateDeployFields(); });
@@ -1624,6 +1769,7 @@ function wire() {
       if (!$('deploy-modal').hidden) $('dp-cancel').click();
       if (!$('limits-modal').hidden) $('lm-cancel').click();
       if (!$('bt-modal').hidden) $('bt-close').click();
+      if (!$('cluster-modal').hidden) $('cl-cancel').click();
       if (!$('choice-modal').hidden && live.cancelChoice) live.cancelChoice();
     }
   });
@@ -1657,6 +1803,7 @@ async function main() {
   await loadFiles();
   loadAiStatus();
   refreshList().catch(() => {});
+  initCluster().then(() => { if (cluster.configured) refreshCluster().catch(() => {}); });
   setInterval(() => { if (live.view !== 'live' && !document.hidden) refreshList().catch(() => {}); }, 5000);
   const first = state.files.find((f) => f.name === 'threshold.sm') || state.files.find((f) => f.kind === 'strategy');
   if (first) await openFile(first.name);

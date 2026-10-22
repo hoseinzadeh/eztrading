@@ -92,6 +92,9 @@ impl Compile for Expr {
                 let mut lhs = lhs?;
                 let mut rhs = rhs?;
                 let mut pushed = false;
+                // Decide this before a scope for the member's type is pushed: inside it the names
+                // of the left-hand side (`Tickers`, `sym`) can no longer be resolved.
+                let lhs_is_signal = lhs.is_signal(ns);
                 if op.as_rule() == Rule::member || op.as_rule() == Rule::scope {
                     if let Some(def) = lhs.def(ns) {
                         pushed = ns.new_unnamed_scope(&def);
@@ -109,7 +112,7 @@ impl Compile for Expr {
                         op = Expr::Signal(Box::new(op));
                     }
                     Infix(Box::new(lhs), Box::new(op), Box::new(rhs))
-                } else if op.as_rule() == Rule::member && lhs.is_signal(ns) {
+                } else if op.as_rule() == Rule::member && lhs_is_signal {
                     let mut arrow = true;
                     if let Ident(t, _) = &rhs {
                         if t.as_str() == "history" {

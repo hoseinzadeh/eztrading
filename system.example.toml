@@ -1,7 +1,7 @@
 name = "EZTrading System"
 
-# Copy this file to `system.toml` (git-ignored) and edit it. Paths are relative
-# to the directory you start `srvman` from, normally the repository root.
+# Copy this file to `system.toml` (git-ignored) in the directory you start `srvman` from and edit
+# it. Replace /path/to/eztrading with the absolute path of your checkout (see docs/cluster.md).
 # Replace 127.0.0.1 with the server's address when running on several machines,
 # and `user` with the account used to start the servers.
 
@@ -30,52 +30,56 @@ port = 3306
 user = "root"
 pswd = "change-me" # your MySQL password
 
-# The user in sysman should be authorized in all servers
+# srvman starts every server over SSH (key-based login to `user@host` must work), so use absolute
+# paths in `exec`, `schlib`, `template` and `build_script`: they are resolved on the target machine.
+# The user should be authorized in all servers
 [servers.datasrv]
 host = "127.0.0.1"
 port = 2021
 user = "your-user"
-exec = "./target/debug/datasrv"
+exec = "/path/to/eztrading/target/debug/datasrv"
 # Your Twelve Data key (https://twelvedata.com). Omit this line to use the
 # TWELVEDATA_API_KEY environment variable instead.
 apikey = "YOUR_TWELVEDATA_API_KEY"
 workspace = "/tmp/eztrading/data"
+# Symbols streamed in real time (the data server subscribes to these; bots can only listen to them)
+symbols = ["AAPL", "BTC/USD"]
 
 [servers.jobsrv.1]
 host = "127.0.0.1"
 cap = 10
 user = "your-user"
-exec = "./target/debug/jobsrv"
-schlib = "./package/common/scheduler.dylib" # use .so on Linux
+exec = "/path/to/eztrading/target/debug/jobsrv"
+schlib = "/path/to/eztrading/package/common/scheduler.so" # .dylib on macOS
 
 [servers.jobsrv.2]
 host = "127.0.0.1"
 cap = 5
 user = "your-user"
-exec = "./target/debug/jobsrv"
-schlib = "./package/common/scheduler.dylib" # use .so on Linux
+exec = "/path/to/eztrading/target/debug/jobsrv"
+schlib = "/path/to/eztrading/package/common/scheduler.so" # .dylib on macOS
 
 [servers.jobsrv.3]
 host = "127.0.0.1"
 cap = 5
 user = "your-user"
-exec = "./target/debug/jobsrv"
-schlib = "./package/common/scheduler.dylib" # use .so on Linux
+exec = "/path/to/eztrading/target/debug/jobsrv"
+schlib = "/path/to/eztrading/package/common/scheduler.so" # .dylib on macOS
 
 [servers.codesrv.1]
 host = "127.0.0.1"
 port = 2024
 user = "your-user"
-exec = "./target/debug/codesrv"
+exec = "/path/to/eztrading/target/debug/codesrv"
 workspace = "/tmp/eztrading/codesrv"
-template = "./package"
-build_script = "./pack.sh"
+template = "/path/to/eztrading/package"
+build_script = "/path/to/eztrading/pack.sh"
 
 [servers.codesrv.2]
 host = "127.0.0.1"
 port = 2025
 user = "your-user"
-exec = "./target/debug/codesrv"
+exec = "/path/to/eztrading/target/debug/codesrv"
 workspace = "/tmp/eztrading/codesrv"
-template = "./package"
-build_script = "./pack.sh"
+template = "/path/to/eztrading/package"
+build_script = "/path/to/eztrading/pack.sh"

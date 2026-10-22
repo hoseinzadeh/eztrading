@@ -22,6 +22,8 @@ jobs:
           cargo run -q -p agent -- check examples/momentum.sm
           cargo run -q -p agent -- check examples/bracket.sm
           cargo run -q -p agent -- check tests/example.sm
+      - name: Generated C++ and the C++ runtime compile
+        run: scripts/check-cpp.sh
       - name: Syntax-check the Studio front end
         run: |
           node --check core/studio/assets/app.js

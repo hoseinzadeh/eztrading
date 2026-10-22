@@ -23,6 +23,7 @@ actix-web = { workspace = true }
 tokio = { workspace = true }
 ezt_agent = { package = "agent", path = "../agent" }
 ezt_broker = { package = "broker", path = "../broker" }
+com = { path = "../../servers/com" }
 
 [dev-dependencies]
 tempfile = "3"

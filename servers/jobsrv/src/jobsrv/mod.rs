@@ -2,7 +2,7 @@ use chrono::{NaiveDate, Utc};
 use com::{
     api::{PluginAPI, SchApi},
     convert,
-    data::{Machine, Param},
+    data::{Machine, Param, Ticker},
     db::Database,
     dylib_file_extension, failed,
     net::{man::HeartBeat, *},
@@ -27,12 +27,13 @@ pub struct Run {
     plugin_id: u32,
     machine_name: String,
     machine_json: String,
-    sch_idx: usize
+    sch_idx: usize,
+    handle: *mut std::ffi::c_void,
 }
 
 impl Run {
-    fn new(user_id: u32, plugin_id: u32, machine_name: String, machine_json: String, sch_idx: usize) -> Run {
-        Self { user_id, plugin_id, machine_name, machine_json, sch_idx }
+    fn new(user_id: u32, plugin_id: u32, machine_name: String, machine_json: String, sch_idx: usize, handle: *mut std::ffi::c_void) -> Run {
+        Self { user_id, plugin_id, machine_name, machine_json, sch_idx, handle }
     }
 }
 
@@ -47,6 +48,8 @@ pub struct JobSrv {
     workspace: String,
     db_conn_str: String,
     db: Option<PooledConn>,
+    /// The id srvman gave this server (bots are stored with it so each server restores only its own)
+    server_id: Option<usize>,
 }
 
 unsafe impl Send for JobSrv {}
@@ -71,6 +74,15 @@ impl JobSrv {
         workspace: String,
         srvman: Option<(String, usize)>,
     ) -> Result<Self, Status> {
+        let server_id = srvman.as_ref().map(|s| s.1);
+        let datasrv_conn = Self::connect(ServerConnection::AsClient(datasrv_ip.into()), Handshake::JobSrv(0))?;
+        // The data server pushes prices without being asked; feed them to our own request loop.
+        {
+            let tx = datasrv_conn.tx.clone();
+            datasrv_conn.start_async_recv(move |p, addr| {
+                let _ = tx.send((p, None, addr));
+            });
+        }
         let plugins_dir = format!("{}/plugins", workspace);
         if !Path::new(&plugins_dir).exists() {
             convert!(std::fs::create_dir_all(plugins_dir))?;
@@ -89,12 +101,10 @@ impl JobSrv {
             } else {
                 None
             },
-            datasrv_conn: Self::connect(
-                ServerConnection::AsClient(datasrv_ip.into()),
-                Handshake::JobSrv(0),
-            )?,
+            datasrv_conn,
             db_conn_str: format!("mysql://{db_user}:{db_pass}@{db_addr}/eztrading"),
-            db: Some(Self::new_pool(&db_conn_str)?)
+            db: Some(Self::new_pool(&db_conn_str)?),
+            server_id,
         })
     }
 
@@ -161,43 +171,149 @@ impl JobSrv {
         plugin_id: u32,
         force_download: bool,
     ) -> Result<&mut Plugin, Status> {
-        if force_download {
-            if let Some(plugin) = self.plugins.get_mut(&plugin_id) {
-                if plugin.active_users.is_empty() {
-                    self.plugins.remove(&plugin_id);
-                } else {
-                    return Err(failed!(format!("Plugin {plugin_id} is being used by {} users.", plugin.active_users.len())));
+        if let Some(plugin) = self.plugins.get_mut(&plugin_id) {
+            if !force_download {
+                return Ok(self.plugins.get_mut(&plugin_id).unwrap());
+            }
+            if !plugin.active_users.is_empty() {
+                return Err(failed!(format!("Plugin {plugin_id} is being used by {} users.", plugin.active_users.len())));
+            }
+        }
+        // Every load writes a new file: overwriting a library that is mapped into this process
+        // crashes it (SIGBUS), and a rebuilt plugin has to replace the one that is loaded.
+        let stamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_millis());
+        let dir = format!("{}/plugins", self.workspace);
+        let mut lib_path = format!("{dir}/plugin_{plugin_id}_{stamp}{}", dylib_file_extension());
+        println!("Downloading plugin from {lib_path} ...");
+        let name = self.download_dylib(&lib_path, plugin_id, true)?;
+        let previous = self.plugins.remove(&plugin_id);
+        lib_path += "\0";
+        let mut api = PluginAPI::new();
+        unsafe {
+            use com::libc;
+            println!(">> loading plugin ...");
+            let hdl = libc::dlopen(lib_path.as_bytes().as_ptr() as *mut i8, libc::RTLD_LAZY);
+            if self.api.load(hdl, &mut api.handle) {
+                api.cnt = self.api.get_contents(&api);
+            } else {
+                eprintln!("Plugin load failed");
+                if let Some(p) = previous {
+                    self.plugins.insert(plugin_id, p);
+                }
+                return Err(failed!(format!("Plugin {plugin_id} could not be loaded")));
+            }
+        }
+        // the previous copy stays mapped (its machines are stopped), but its file is no longer needed
+        if let Ok(rd) = std::fs::read_dir(&dir) {
+            let keep = lib_path.trim_end_matches('\0').rsplit('/').next().unwrap_or("").to_owned();
+            for e in rd.flatten() {
+                let n = e.file_name().to_string_lossy().into_owned();
+                if n.starts_with(&format!("plugin_{plugin_id}")) && n != keep {
+                    let _ = std::fs::remove_file(e.path());
                 }
             }
         }
-        let mut lib_path = format!(
-            "{}/plugins/plugin_{}{}",
-            self.workspace,
-            plugin_id,
-            dylib_file_extension()
-        );
-        println!("Downloading plugin from {lib_path} ...");
-        let name = self.download_dylib(&lib_path, plugin_id, force_download)?;
-        lib_path += "\0";
-        let plugin = self.plugins.entry(plugin_id).or_insert_with(|| {
-            let mut api = PluginAPI::new();
-            unsafe {
-                use com::libc;
-                println!(">> loading plugin ...");
+        self.plugins.insert(plugin_id, Plugin { api, name, active_users: HashSet::new() });
+        self.restore_bots(plugin_id);
+        Ok(self.plugins.get_mut(&plugin_id).unwrap())
+    }
 
-                let hdl = libc::dlopen(lib_path.as_bytes().as_ptr() as *mut i8, libc::RTLD_LAZY);
-                if self
-                    .api
-                    .load(hdl, &mut api.handle)
-                {
-                    api.cnt = self.api.get_contents(&api);
-                } else {
-                    eprintln!("Plugin load failed");
+    /// After a restart: load the plugins of the bots stored for this server and start them again.
+    pub fn restore(&mut self) {
+        let server_id = self.server_id.map(|i| i as i64);
+        let ids: Vec<u32> = match self.db_conn() {
+            Some(conn) => conn
+                .exec("SELECT DISTINCT plugin_id FROM bots WHERE server_id <=> :s", params! { "s" => server_id })
+                .unwrap_or_default(),
+            None => return,
+        };
+        for id in ids {
+            if let Err(e) = self.load_plugin(id, false) {
+                eprintln!("Could not restore the bots of plugin {id}: {e}");
+            }
+        }
+    }
+
+    /// Start the bots stored for this plugin and server that are not running yet (after a restart).
+    fn restore_bots(&mut self, plugin_id: u32) {
+        if self.schedulers.is_empty() {
+            return;
+        }
+        let server_id = self.server_id.map(|i| i as i64);
+        let rows: Vec<(u32, u32, String)> = match self.db_conn() {
+            Some(conn) => conn
+                .exec(
+                    "SELECT id, user_id, machine FROM bots WHERE plugin_id = :p AND server_id <=> :s",
+                    params! { "p" => plugin_id, "s" => server_id },
+                )
+                .unwrap_or_default(),
+            None => return,
+        };
+        for (run_id, user_id, json) in rows {
+            if self.runs.contains_key(&run_id) {
+                continue;
+            }
+            match serde_json::from_str::<Machine>(&json) {
+                Ok(machine) => match self.relaunch(&machine, user_id, run_id) {
+                    Ok(_) => {
+                        println!("Restored bot {run_id} ({}) for user {user_id}", machine.name);
+                        self.listen_to(&machine);
+                    }
+                    Err(e) => eprintln!("Could not restore bot {run_id}: {e}"),
+                },
+                Err(e) => eprintln!("Could not read bot {run_id}: {e}"),
+            }
+        }
+    }
+
+    /// Ask the data server for the symbols a machine works with (its `Vec<Symbol>` parameters).
+    fn listen_to(&mut self, machine: &Machine) {
+        let mut symbols: Vec<String> = vec![];
+        for p in &machine.params {
+            if p.r#type.contains("Symbol") {
+                let bytes: Vec<u8> = (0..p.value.data.len() / 2)
+                    .filter_map(|i| u8::from_str_radix(&p.value.data[2 * i..2 * i + 2], 16).ok())
+                    .take(p.value.size)
+                    .collect();
+                if let Ok(text) = String::from_utf8(bytes) {
+                    symbols.extend(text.split(',').map(str::trim).filter(|s| !s.is_empty()).map(str::to_owned));
                 }
             }
-            Plugin { api, name, active_users: HashSet::new() }
-        });
-        Ok(plugin)
+        }
+        symbols.sort();
+        symbols.dedup();
+        if !symbols.is_empty() {
+            if let Err(e) = self.datasrv_conn.request::<DataSrvReq, DataSrvRep>(DataSrvReq::Listen(symbols.clone())) {
+                eprintln!("Could not subscribe to {symbols:?}: {e}");
+            } else {
+                println!("Listening to {symbols:?}");
+            }
+        }
+    }
+
+    /// Hand a new price to every loaded plugin and wake the jobs that wait for it.
+    fn push_ticker(&mut self, symbol: &str, t: &Ticker) {
+        let Ok(sym) = std::ffi::CString::new(symbol) else { return };
+        if std::env::var("EZT_TRACE_TICKS").is_ok() {
+            println!("tick {symbol} {:.4} -> {} plugin(s)", t.close, self.plugins.len());
+        }
+        let handles: Vec<*mut std::ffi::c_void> = self.schedulers.iter().map(|s| s.handle()).collect();
+        for plugin in self.plugins.values() {
+            unsafe {
+                self.api.update_ticker(
+                    plugin.api.handle() as *const _,
+                    sym.as_ptr(),
+                    t.datetime,
+                    t.open,
+                    t.high,
+                    t.low,
+                    t.close,
+                    t.volume as i32,
+                    handles.as_ptr(),
+                    handles.len(),
+                );
+            }
+        }
     }
 
     pub fn get_plugin_id(&mut self, machine: &str) -> Result<PluginId, Status> {
@@ -217,7 +333,8 @@ impl JobSrv {
     pub fn relaunch(&mut self, machine: &Machine, user_id: u32, run_id: u32) -> Result<usize, Status> {
         if self.schedulers.is_empty() {
             Err(failed!("No scheduler is running"))
-        } else if let Some((machine, plugin_id)) = self.machines().get(&machine.name) {
+        } else if let Some((_, plugin_id)) = self.machines().get(&machine.name) {
+            // `machine` keeps the parameters the user chose (not the plugin's defaults)
             self.sch_idx = (self.sch_idx + 1) % self.schedulers.len();
             let subscribers = self.plugin_subscribers(*plugin_id)?.clone();
             let subscribers: HashMap<UserId, NaiveDate> = subscribers.into_iter().collect();
@@ -228,16 +345,17 @@ impl JobSrv {
                     let machine_name = format!("{}\0", machine.name);
                     let machine_json = format!("{}\0", serde_json::to_string(&machine).unwrap());
                     plugin.active_users.insert(user_id);
-                    unsafe {
-                        sch.add_machine(self.api.launch_machine(
+                    let handle = unsafe {
+                        self.api.launch_machine(
                             plugin.api.handle,
                             user_id,
                             sch.handle(),
                             machine_name.as_ptr() as *mut i8,
                             machine_json.as_ptr() as *mut i8,
-                        ))?;
-                    }
-                    self.runs.insert(run_id, Run::new(user_id, *plugin_id, machine_name, machine_json, self.sch_idx));
+                        )
+                    };
+                    sch.add_machine(handle)?;
+                    self.runs.insert(run_id, Run::new(user_id, *plugin_id, machine_name, machine_json, self.sch_idx, handle));
                     Ok(self.sch_idx)
                 } else {
                     Err(failed!(format!("User {user_id}'s subscription to plugin {plugin_id} has been expired")))
@@ -256,24 +374,30 @@ impl JobSrv {
     /// Launch a machine and save it to the database
     pub fn launch(&mut self, machine: &Machine, user_id: u32) -> Result<usize, Status> {
         let plugin_id = self.get_plugin_id(&machine.name)?;
+        let server_id = self.server_id.map(|i| i as i64);
         let this = self as *mut Self;
         if let Some(db_conn) = self.db_conn() {
             if let Ok(mut txn) = db_conn.start_transaction(TxOpts::default()) {
                 convert!(
                     txn.exec_drop(
-                        r"INSERT INTO bots (user_id, plugin_id, machine)
-                        VALUES (:user_id, :plugin_id, :machine)",
+                        r"INSERT INTO bots (user_id, plugin_id, machine, server_id)
+                        VALUES (:user_id, :plugin_id, :machine, :server_id)",
                         params! {
                             "user_id" => &user_id,
                             "plugin_id" => &plugin_id,
                             "machine" => serde_json::to_string(machine).unwrap(),
+                            "server_id" => server_id,
                         },
                     ),
                     ErrorCode::Database
                 )?;
                 let run_id: Option<u32> = convert!(txn.query_first("SELECT LAST_INSERT_ID()"))?;
                 match unsafe {&mut *this}.relaunch(machine, user_id, run_id.ok_or(failed!("DB Error"))?) {
-                    Ok(idx) => Ok(idx),
+                    Ok(idx) => {
+                        convert!(txn.commit())?;
+                        unsafe {&mut *this}.listen_to(machine);
+                        Ok(idx)
+                    }
                     Err(e) => {
                         convert!(txn.rollback())?;
                         Err(e)
@@ -288,28 +412,23 @@ impl JobSrv {
     }
 
     pub fn stop(&mut self, run_id: u32) -> Result<(), Status> {
-        let this = self as *mut Self;
-        if let Some(db_conn) = self.db_conn() {
-            if let Ok(mut txn) = db_conn.start_transaction(TxOpts::default()) {
-                convert!(
-                    txn.exec_drop(
-                        r"DELETE FROM bots WHERE id=:run_id",
-                        params! { "run_id" => run_id },
-                    ),
-                    ErrorCode::Database
-                )?;
-                let this = unsafe { &mut *this };
-                if let Some(run) = this.runs.remove(&run_id) {
-                    println!("Stopped running bot {run_id} for user {} (machine {} from plugin {})", run.user_id, run.machine_name, run.plugin_id);
-                    todo!("stop the machine from the scheduler")
-                }
-                Ok(())
-            } else {
-                Err(failed!("Could not start a transaction"))
-            }
-        } else {
-            Err(failed!("No DB Connection"))
+        let Some(run) = self.runs.remove(&run_id) else {
+            return Err(failed!(format!("No bot {run_id} is running on this server")));
+        };
+        println!("Stopping bot {run_id} for user {} (machine {} from plugin {})", run.user_id, run.machine_name.trim_end_matches('\0'), run.plugin_id);
+        unsafe { self.api.stop_machine(run.handle) };
+        if let Some(sch) = self.schedulers.get_mut(run.sch_idx) {
+            sch.forget_machine(run.handle);
         }
+        if let Some(db_conn) = self.db_conn() {
+            convert!(db_conn.exec_drop(r"DELETE FROM bots WHERE id=:run_id", params! { "run_id" => run_id }), ErrorCode::Database)?;
+        }
+        if !self.runs.values().any(|r| r.user_id == run.user_id && r.plugin_id == run.plugin_id) {
+            if let Some(p) = self.plugins.get_mut(&run.plugin_id) {
+                p.active_users.remove(&run.user_id);
+            }
+        }
+        Ok(())
     }
 
     pub fn setup(&mut self, count: usize) {
@@ -427,8 +546,7 @@ impl Server for JobSrv {
                 }
             }
             JobSrvReq::Update(sym, t) => {
-                println!("Received {sym}{t:#?}");
-                // TODO: propagate data to the corresponding machines
+                self.push_ticker(sym, t);
                 Ok(JobSrvRep::Successful)
             }
             JobSrvReq::Emit(_) => Ok(JobSrvRep::Todo(req)),

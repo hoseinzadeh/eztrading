@@ -11,6 +11,9 @@ pub struct SchApi {
     load: unsafe extern "C" fn(handle: *mut c_void, plugin: *mut *mut c_void) -> bool,
     delete_plugin: unsafe extern "C" fn(plugin: *mut c_void),
     plugin_contents: unsafe extern "C" fn(plugin: *const c_void, json: *mut *mut c_char, size: *mut usize),
+    update_ticker: unsafe extern "C" fn(plugin: *const c_void, symbol: *const c_char, timestamp: i64, open: f32,
+        high: f32, low: f32, close: f32, volume: i32, schedulers: *const *mut c_void, count: usize) -> bool,
+    stop_machine: unsafe extern "C" fn(machine: *mut c_void),
     launch_machine: unsafe extern "C" fn(plugin: *const c_void, user_id: u32,
         scheduler: *mut c_void, model_name: *mut c_char, machine_json: *mut c_char) -> *mut c_void
 }

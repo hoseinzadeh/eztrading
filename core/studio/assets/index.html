@@ -12,6 +12,7 @@
   <nav class="views" role="tablist" aria-label="Views">
     <button id="view-editor" class="view active" role="tab">Editor</button>
     <button id="view-live" class="view" role="tab">Live <span id="live-pill" class="pill" hidden></span></button>
+    <button id="view-cluster" class="view" role="tab" hidden>Cluster <span id="cluster-pill" class="pill" hidden></span></button>
   </nav>
   <div class="file-actions">
     <span id="file-name" class="file-name">no file</span><span id="dirty" class="dirty" hidden>●</span>
@@ -22,6 +23,7 @@
     <button id="btn-compile" class="btn" title="Run the real SML compiler">Compile</button>
     <button id="btn-run" class="btn primary" title="Simulate the strategy on price data">▶ Backtest</button>
     <button id="btn-tests" class="btn" title="Run the tests for this strategy">✔ Tests</button>
+    <button id="btn-cluster-deploy" class="btn deploy" hidden title="Compile this strategy on the server cluster and run it as a bot">⬆ Cluster</button>
     <button id="btn-deploy" class="btn deploy" title="Run this strategy continuously on the server (paper trading)">⬆ Deploy</button>
   </div>
   <div id="status" class="status" role="status"></div>
@@ -230,6 +232,43 @@
     </div>
   </section>
 </main>
+
+<main id="cluster-view" class="cluster" hidden>
+  <div id="cluster-offline" class="warn-box" hidden></div>
+  <section class="cluster-grid">
+    <div>
+      <h3 class="side-h">Servers <span id="cluster-addr" class="muted"></span></h3>
+      <ul id="cluster-servers" class="broker-list"></ul>
+      <h3 class="side-h">Deployments from this browser</h3>
+      <ul id="cluster-tasks" class="broker-list"></ul>
+    </div>
+    <div>
+      <h3 class="side-h">Running bots</h3>
+      <div class="table-wrap"><table id="cluster-bots"><thead><tr><th>Bot</th><th>Plugin</th><th>Machine</th><th>User</th><th>Server</th><th></th></tr></thead><tbody></tbody></table></div>
+      <h3 class="side-h">Plugins on the cluster</h3>
+      <div class="table-wrap"><table id="cluster-plugins"><thead><tr><th>Id</th><th>Name</th><th>Owner</th><th>Machines</th><th>Version</th></tr></thead><tbody></tbody></table></div>
+      <p class="hint">A plugin is a strategy compiled to a native library by a code server. A bot is a launched machine: it runs on a job server and receives prices from the data server. Bots are stored in the database and start again after a restart.</p>
+    </div>
+  </section>
+</main>
+
+<div id="cluster-modal" class="modal" hidden>
+  <form id="cluster-form" class="modal-box wide">
+    <h2>Deploy to the server cluster</h2>
+    <p class="muted" id="cl-source"></p>
+    <div class="grid">
+      <label>Plugin name <input id="cl-name" maxlength="60" required></label>
+      <label>Machine <select id="cl-machine"></select></label>
+      <label>Run as user <select id="cl-user"></select></label>
+    </div>
+    <h3>Parameters</h3>
+    <div id="cl-params" class="grid"></div>
+    <p class="hint">The strategy is compiled to C++ by a code server, loaded on the job servers and launched. It runs in the C++ runtime (which only counts shares: no cash, fills or limit orders), unlike the Studio simulator. Symbols must be streamed by the data server.</p>
+    <ul id="cl-steps" class="bt-steps"></ul>
+    <div id="cl-error" class="error-box" hidden></div>
+    <div class="row"><button type="submit" id="cl-submit" class="btn primary">Deploy</button><button type="button" id="cl-cancel" class="btn">Close</button></div>
+  </form>
+</div>
 
 <div id="deploy-modal" class="modal" hidden>
   <form id="deploy-form" class="modal-box wide">

@@ -99,6 +99,16 @@ impl From<&TSPoint> for Ticker {
     }
 }
 
+/// Base URL of the Twelve Data REST API (`TWELVEDATA_API_URL` overrides it, e.g. for a local stand-in).
+fn api_url() -> String {
+    std::env::var("TWELVEDATA_API_URL").unwrap_or_else(|_| "https://api.twelvedata.com".into()).trim_end_matches('/').to_owned()
+}
+
+/// Base URL of the Twelve Data WebSocket API (`TWELVEDATA_WS_URL` overrides it).
+fn ws_url() -> String {
+    std::env::var("TWELVEDATA_WS_URL").unwrap_or_else(|_| "wss://ws.twelvedata.com".into()).trim_end_matches('/').to_owned()
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct TSTicker {
     meta: Option<TimeSeriesMetaData>,
@@ -158,7 +168,7 @@ impl WebSocketClient for WS12Data {
         stream_tx: Sender<(String, Ticker)>,
         key: &str,
     ) -> Result<(), Status> {
-        let url = format!("wss://ws.twelvedata.com/v1/quotes/price?apikey={key}");
+        let url = format!("{}/v1/quotes/price?apikey={key}", ws_url());
         let symbols = symbols.lock().unwrap().join(",");
         let socket = Self::connect(&url)?;
         let ws = Self {
@@ -300,7 +310,8 @@ impl TwelveData {
         key: &str,
     ) -> Result<HashMap<String, TimeSeries>, Status> {
         let request_url = format!(
-                "https://api.twelvedata.com/time_series?apikey={key}&symbol={symbols}&timezone=UTC{exchange}{mic}{country}{start}{end}{interval}",
+                "{api}/time_series?apikey={key}&symbol={symbols}&timezone=UTC{exchange}{mic}{country}{start}{end}{interval}",
+                api = api_url(),
                 symbols = filter.symbols.iter().map(|s| s.to_string()).collect::<Vec<String>>().join(","),
                 exchange = to_url_query("exchange", &filter.exchange),
                 mic = to_url_query("mic_code", &filter.mic),
@@ -422,7 +433,7 @@ impl Provider for TwelveData {
     }
 
     fn init(&mut self, key: &str) -> Result<(), Status> {
-        let request_url = format!("https://api.twelvedata.com/market_state?apikey={key}");
+        let request_url = format!("{}/market_state?apikey={key}", api_url());
         let response = convert!(reqwest::blocking::get(request_url), ErrorCode::Network)?;
         let txt = response.text();
         let json: serde_json::Value =
@@ -561,8 +572,9 @@ impl Provider for TwelveData {
         filter: Filter,
     ) -> Result<HashMap<String, Result<i64, String>>, Status> {
         let request_url = format!(
-            "https://api.twelvedata.com/earliest_timestamp?apikey={key}&symbol={symbols}&timezone=UTC{exchange}{mic}{interval}",
+            "{api}/earliest_timestamp?apikey={key}&symbol={symbols}&timezone=UTC{exchange}{mic}{interval}",
             key = self.apikey,
+            api = api_url(),
             symbols = filter.symbols.iter().map(|s| s.to_string()).collect::<Vec<String>>().join(","),
             exchange = to_url_query("exchange", &filter.exchange),
             mic = to_url_query("mic_code", &filter.mic),

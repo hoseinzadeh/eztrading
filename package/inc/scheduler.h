@@ -148,6 +148,8 @@ public:
         sig.lock();
     }
 
+    bool owned_by(const Scheduler *sch) const { return scheduler == sch; }
+
     void setup(Scheduler *scheduler) {
         this->scheduler = scheduler;
         scheduler->register_worker(this);

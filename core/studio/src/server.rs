@@ -44,6 +44,7 @@ pub struct AppState {
     pub stdlib: String,
     pub allowed_hosts: Vec<String>,
     pub live: Arc<live::Manager>,
+    pub cluster: Arc<crate::cluster::Cluster>,
 }
 
 #[derive(Debug)]
@@ -132,6 +133,11 @@ pub fn configure(cfg: &mut web::ServiceConfig, state: web::Data<AppState>) {
                 .route("/api/compile", web::post().to(compile_source))
                 .route("/api/backtest", web::post().to(run_backtest))
                 .route("/api/test", web::post().to(run_tests))
+                .route("/api/cluster", web::get().to(cluster_status))
+                .route("/api/cluster/deploy", web::post().to(cluster_deploy))
+                .route("/api/cluster/tasks", web::get().to(cluster_tasks))
+                .route("/api/cluster/tasks/{id}", web::get().to(cluster_task))
+                .route("/api/cluster/bots/{id}/stop", web::post().to(cluster_stop))
                 .route("/api/brokers", web::get().to(brokers_list))
                 .route("/api/brokers/kill", web::post().to(brokers_kill))
                 .route("/api/brokers/{name}/test", web::post().to(brokers_test))
@@ -506,6 +512,39 @@ async fn live_list(state: web::Data<AppState>) -> ApiResult {
     })))
 }
 
+// ---- the server cluster (srvman) -------------------------------------------
+
+async fn cluster_status(state: web::Data<AppState>) -> ApiResult {
+    let c = state.cluster.clone();
+    let v = web::block(move || c.status()).await.map_err(|e| ApiError::internal(e.to_string()))?;
+    Ok(HttpResponse::Ok().json(v))
+}
+
+async fn cluster_deploy(state: web::Data<AppState>, body: web::Json<crate::cluster::DeployRequest>) -> ApiResult {
+    let c = state.cluster.clone();
+    let req = body.into_inner();
+    let id = web::block(move || c.deploy(req)).await.map_err(|e| ApiError::internal(e.to_string()))?.map_err(ApiError::bad)?;
+    Ok(HttpResponse::Ok().json(json!({ "task": id })))
+}
+
+async fn cluster_tasks(state: web::Data<AppState>) -> ApiResult {
+    Ok(HttpResponse::Ok().json(json!({ "tasks": state.cluster.tasks() })))
+}
+
+async fn cluster_task(state: web::Data<AppState>, id: web::Path<u64>) -> ApiResult {
+    match state.cluster.task(*id) {
+        Some(t) => Ok(HttpResponse::Ok().json(t)),
+        None => Err(ApiError::not_found("no such task")),
+    }
+}
+
+async fn cluster_stop(state: web::Data<AppState>, id: web::Path<u32>) -> ApiResult {
+    let c = state.cluster.clone();
+    let id = id.into_inner();
+    web::block(move || c.stop_bot(id)).await.map_err(|e| ApiError::internal(e.to_string()))?.map_err(ApiError::conflict)?;
+    Ok(HttpResponse::Ok().json(json!({ "ok": true })))
+}
+
 // ---- brokerage connections -----------------------------------------------
 
 async fn brokers_list(state: web::Data<AppState>) -> ApiResult {
@@ -696,6 +735,7 @@ mod tests {
             stdlib: String::new(),
             allowed_hosts: vec!["studio.example".into()],
             live: live::Manager::open(dir).unwrap(),
+            cluster: crate::cluster::Cluster::new(None),
         })
     }
 
@@ -922,6 +962,7 @@ mod tests {
             stdlib: String::new(),
             allowed_hosts: vec![],
             live: live::Manager::open_with(dir.path(), Arc::new(brokers)).unwrap(),
+            cluster: crate::cluster::Cluster::new(None),
         });
         let app = app!(st);
         let l: Value = atest::call_and_read_body_json(&app, get("/api/brokers").to_request()).await;

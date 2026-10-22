@@ -30,7 +30,6 @@ ifeq ($(UNAME_S),Linux)
 	CFLAGS+=-fPIC
 	CLANGFLAGS=-shared -ldl -fPIC -std=c++20 -lstdc++ -pthread
 	LIBS=-ldl
-	CC=g++-10
 	LIBRARY=$(SMLFILE:%.sm=%.so)
 	SCH_LIB=$(SCHEDULER:%.cpp=%.so)
 endif

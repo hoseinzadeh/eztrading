@@ -260,3 +260,10 @@ pre.wrap { white-space: pre-wrap; max-height: 420px; font-family: inherit; font-
 .bt-steps .no { color: var(--bad); }
 .bt-steps .ms { margin-left: auto; color: var(--muted); font-size: 11px; }
 td.st-filled { color: var(--good); } td.st-rejected, td.st-canceled, td.st-expired { color: var(--muted); } td.st-open, td.st-partially_filled { color: var(--warn); }
+
+/* ---- server cluster ---- */
+.cluster { padding: 14px 18px; }
+.cluster-grid { display: grid; grid-template-columns: minmax(260px, 340px) 1fr; gap: 18px; align-items: start; }
+@media (max-width: 900px) { .cluster-grid { grid-template-columns: 1fr; } }
+.broker-list .up { color: var(--good); } .broker-list .down { color: var(--bad); }
+.step-ok { color: var(--good); } .step-failed { color: var(--bad); } .step-running { color: var(--warn); }

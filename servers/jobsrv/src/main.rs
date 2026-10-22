@@ -56,6 +56,7 @@ fn main() -> Result<(), Status> {
         args.srvman.map(|a| (a, args.id.expect("id is required"))),
     )?;
     jobsrv.setup(args.capacity);
+    jobsrv.restore();
     // jobsrv.load_plugin("tests/example.dylib\0".to_owned()).unwrap();
     jobsrv.start();
 
