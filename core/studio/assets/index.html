@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>eztrading Studio</title>
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="brand-ez">ez</span><span class="brand-tr">Trading</span><span class="brand-sub">Studio</span></div>
+  <nav class="views" role="tablist" aria-label="Views">
+    <button id="view-editor" class="view active" role="tab">Editor</button>
+    <button id="view-live" class="view" role="tab">Live <span id="live-pill" class="pill" hidden></span></button>
+  </nav>
+  <div class="file-actions">
+    <span id="file-name" class="file-name">no file</span><span id="dirty" class="dirty" hidden>●</span>
+    <button id="btn-new" class="btn" title="Create a new strategy">New</button>
+    <button id="btn-save" class="btn" title="Save (Ctrl/Cmd+S)">Save</button>
+  </div>
+  <div class="run-actions">
+    <button id="btn-compile" class="btn" title="Run the real SML compiler">Compile</button>
+    <button id="btn-run" class="btn primary" title="Simulate the strategy on price data">▶ Backtest</button>
+    <button id="btn-tests" class="btn" title="Run the tests for this strategy">✔ Tests</button>
+    <button id="btn-deploy" class="btn deploy" title="Run this strategy continuously on the server (paper trading)">⬆ Deploy</button>
+  </div>
+  <div id="status" class="status" role="status"></div>
+</header>
+
+<main class="layout">
+  <aside class="files" aria-label="Files">
+    <h2>Workspace</h2>
+    <ul id="file-list"></ul>
+    <p class="hint">Strategies are <code>.sm</code> files; <code>name.test.json</code> holds the tests of <code>name.sm</code>.</p>
+  </aside>
+
+  <section class="center">
+    <div id="editor" class="editor" aria-label="Strategy source"></div>
+    <div class="problems">
+      <h2>Problems <span id="problem-count" class="pill">0</span></h2>
+      <ul id="problem-list"></ul>
+    </div>
+  </section>
+
+  <section class="right">
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-tab="diagram" role="tab">Diagram</button>
+      <button class="tab" data-tab="backtest" role="tab">Backtest</button>
+      <button class="tab" data-tab="tests" role="tab">Tests <span id="tests-pill" class="pill" hidden></span></button>
+      <button class="tab" data-tab="ai" role="tab">AI</button>
+    </nav>
+
+    <div id="tab-diagram" class="panel active">
+      <div class="row">
+        <label>Machine <select id="machine-select"></select></label>
+        <span class="muted">Transitions are tried in the order shown; a state's actions run on every wake-up.</span>
+      </div>
+      <div id="diagram" class="diagram"></div>
+    </div>
+
+    <div id="tab-backtest" class="panel">
+      <details open class="card">
+        <summary>Data</summary>
+        <div class="grid">
+          <label>Source
+            <select id="data-kind"><option value="generate">Synthetic</option><option value="csv">CSV</option></select>
+          </label>
+          <label>Symbol <input id="data-symbol" value="TEST"></label>
+          <label>Bar size
+            <select id="bar-seconds">
+              <option value="86400" selected>1 day</option><option value="604800">1 week</option>
+              <option value="3600">1 hour</option><option value="300">5 minutes</option>
+            </select>
+          </label>
+        </div>
+        <div id="gen-fields" class="grid">
+          <label>Pattern
+            <select id="gen-kind">
+              <option value="random_walk">Random walk</option><option value="sine">Oscillating</option>
+              <option value="trend_up">Uptrend</option><option value="trend_down">Downtrend</option><option value="crash">Crash</option>
+            </select>
+          </label>
+          <label>Bars <input id="gen-bars" type="number" min="2" max="20000" value="250"></label>
+          <label>Seed <input id="gen-seed" type="number" min="0" value="7"></label>
+          <label>Start price <input id="gen-start" type="number" min="0.01" step="any" value="100"></label>
+          <label>Volatility %/bar <input id="gen-vol" type="number" min="0" step="any" value="1.5"></label>
+          <label>Cycle (bars) <input id="gen-period" type="number" min="2" value="60"></label>
+        </div>
+        <div id="csv-fields" hidden>
+          <textarea id="csv-text" rows="5" spellcheck="false" placeholder="date,close&#10;2024-01-02,101.5&#10;2024-01-03,102.1"></textarea>
+          <input id="csv-file" type="file" accept=".csv,.txt,text/csv">
+          <p class="hint">Columns: <code>close</code>, <code>date,close</code> or <code>date,open,high,low,close,volume</code>; a header row is optional.</p>
+        </div>
+      </details>
+      <details open class="card">
+        <summary>Account</summary>
+        <div class="grid">
+          <label>Starting cash <input id="cash" type="number" min="1" step="any" value="100000"></label>
+          <label>Fee (bps per fill) <input id="fee" type="number" min="0" max="1000" step="any" value="0"></label>
+        </div>
+      </details>
+      <details open class="card">
+        <summary>Parameters</summary>
+        <div id="params" class="grid"></div>
+        <p class="hint">Leave a field empty to use the default from the source.</p>
+      </details>
+      <div class="row"><button id="btn-run2" class="btn primary">▶ Run backtest</button><span id="bt-msg" class="muted"></span></div>
+      <div id="bt-error" class="error-box" hidden></div>
+      <div id="bt-results" hidden>
+        <div id="stats" class="stats"></div>
+        <div id="warnings" class="warn-box" hidden></div>
+        <div class="chart-box"><canvas id="chart-price"></canvas></div>
+        <div id="strip" class="strip"></div>
+        <div class="chart-box short"><canvas id="chart-equity"></canvas></div>
+        <div class="chart-box tiny"><canvas id="chart-dd"></canvas></div>
+        <div class="row"><button id="btn-golden" class="btn">Save as test</button><span class="muted">pins these trades and the final state as a regression test</span></div>
+        <h3>Trades</h3>
+        <div class="table-wrap"><table id="trades"><thead><tr><th>Bar</th><th>Date</th><th>Side</th><th>Shares</th><th>Price</th><th>Process</th><th>State</th><th>P&amp;L</th></tr></thead><tbody></tbody></table></div>
+        <div id="logs-wrap" hidden><h3>printf output</h3><pre id="logs"></pre></div>
+      </div>
+      <p class="disclaimer">A preview simulation: orders fill at the bar's close, there is no slippage or liquidity model, and the real C++ runtime may differ. Not financial advice.</p>
+    </div>
+
+    <div id="tab-tests" class="panel">
+      <div class="row">
+        <button id="btn-run-tests" class="btn primary">✔ Run tests</button>
+        <button id="btn-test-template" class="btn">Insert template</button>
+        <label class="inline"><input type="checkbox" id="run-on-save" checked> run on save</label>
+      </div>
+      <textarea id="tests-text" rows="14" spellcheck="false" placeholder='{ "tests": [ ... ] }'></textarea>
+      <p class="hint">A test is a price path plus what you expect: <code>trades</code> (bar/side/price/shares), <code>final_shares</code>, <code>final_state</code>, <code>min_trades</code>, <code>max_trades</code>. Run a backtest and press “Save as test” to capture one.</p>
+      <div id="test-error" class="error-box" hidden></div>
+      <ul id="test-results" class="test-results"></ul>
+    </div>
+
+    <div id="tab-ai" class="panel">
+      <p id="ai-status" class="muted"></p>
+      <label class="block">Describe a strategy
+        <textarea id="ai-prompt" rows="4" placeholder="Buy AAPL after two consecutive down days; sell at +10% or if it falls 5% below my entry."></textarea>
+      </label>
+      <div class="row">
+        <button id="ai-generate" class="btn primary">Generate</button>
+        <button id="ai-fix" class="btn">Fix problems in the editor</button>
+        <button id="ai-explain" class="btn">Explain the editor</button>
+        <span id="ai-busy" class="muted"></span>
+      </div>
+      <div id="ai-error" class="error-box" hidden></div>
+      <div id="ai-result" hidden>
+        <h3>Result</h3>
+        <pre id="ai-summary" class="wrap"></pre>
+        <div class="row" id="ai-apply-row">
+          <button id="ai-apply" class="btn primary">Replace editor content</button>
+          <button id="ai-newfile" class="btn">Save as new file</button>
+        </div>
+        <p id="ai-usage" class="muted"></p>
+      </div>
+      <p class="disclaimer">The agent only returns strategies the real compiler accepted, but the compiler does not check everything. Read the result, run the tests, and paper-trade before using real money.</p>
+    </div>
+  </section>
+</main>
+
+<main id="live-view" class="live" hidden>
+  <aside class="live-list">
+    <div id="live-summary" class="live-summary"></div>
+    <div class="row"><button id="live-new" class="btn primary">⬆ Deploy from the editor</button></div>
+    <ul id="dep-list"></ul>
+    <h3 class="side-h">Brokerage connections</h3>
+    <div id="broker-bar" class="broker-bar">
+      <button id="kill-toggle" class="btn" title="While on, no deployment can buy. Selling and cancelling still work.">Kill switch: off</button>
+      <button id="emergency" class="btn danger" title="Kill switch on, pause every brokerage deployment, cancel its working orders">Emergency stop</button>
+    </div>
+    <ul id="broker-list" class="broker-list"></ul>
+    <p class="hint">Deployments run on this server, keep running when you close the browser, and are restored after a restart. They trade on a <strong>simulated account</strong> unless you pick a brokerage connection (files in <code>brokers/</code> in your workspace; see docs/brokers.md). Test a connection and use its paper environment first.</p>
+  </aside>
+
+  <section class="live-main">
+    <div id="live-offline" class="warn-box" hidden>Cannot reach the Studio server. Retrying…</div>
+    <div id="live-empty" class="live-empty">
+      <h2>No deployment selected</h2>
+      <p>Open a strategy in the editor and press <strong>⬆ Deploy</strong> to run it continuously on a price feed. You can then watch its state, positions and performance here, pause it, flatten it, or stop it.</p>
+    </div>
+
+    <div id="live-detail" hidden>
+      <div class="dep-head">
+        <div class="dep-title">
+          <h1 id="dep-name"></h1>
+          <div class="dep-sub"><span id="dep-badge" class="badge"></span><span id="dep-reason" class="muted"></span></div>
+          <div id="dep-meta" class="muted"></div>
+        </div>
+        <div class="dep-actions">
+          <button id="dep-pause" class="btn">❚❚ Pause</button>
+          <button id="dep-resume" class="btn primary">▶ Resume</button>
+          <button id="dep-flatten" class="btn" title="Sell every open position at the latest price">Flatten</button>
+          <button id="dep-cancel-orders" class="btn" title="Cancel every working order at the brokerage" hidden>Cancel orders</button>
+          <button id="dep-stop" class="btn danger">■ Stop…</button>
+          <button id="dep-limits" class="btn">Limits</button>
+          <button id="dep-source" class="btn" title="Open the deployed source in the editor">Open source</button>
+          <button id="dep-delete" class="btn danger">Delete</button>
+        </div>
+      </div>
+      <div id="dep-banner" class="warn-box" hidden></div>
+      <div id="dep-broker" class="broker-panel" hidden></div>
+      <div id="dep-kpis" class="stats"></div>
+
+      <div class="live-grid">
+        <div class="live-charts">
+          <div class="chart-box"><canvas id="lv-price"></canvas></div>
+          <div id="lv-strip" class="strip"></div>
+          <div class="chart-box short"><canvas id="lv-equity"></canvas></div>
+          <div class="chart-box tiny"><canvas id="lv-dd"></canvas></div>
+        </div>
+        <div class="live-side">
+          <h3>Positions</h3>
+          <div class="table-wrap small"><table id="dep-positions"><thead><tr><th>Symbol</th><th>Shares</th><th>Avg cost</th><th>Last</th><th>Value</th><th>Unrealised</th></tr></thead><tbody></tbody></table></div>
+          <h3>Processes</h3>
+          <div class="table-wrap small"><table id="dep-procs"><thead><tr><th>Process</th><th>State</th><th>Wakes</th></tr></thead><tbody></tbody></table></div>
+          <h3>Activity</h3>
+          <div id="act-filter" class="chips">
+            <button class="chip active" data-f="all">All</button><button class="chip" data-f="fill">Orders &amp; fills</button><button class="chip" data-f="state">States</button><button class="chip" data-f="alert">Risk &amp; errors</button><button class="chip" data-f="control">Controls</button>
+          </div>
+          <ul id="activity" class="activity"></ul>
+        </div>
+      </div>
+      <div id="dep-orders-wrap" hidden>
+        <h3>Orders</h3>
+        <div class="table-wrap small"><table id="dep-orders"><thead><tr><th>Id</th><th>Side</th><th>Symbol</th><th>Type</th><th>Qty</th><th>Filled</th><th>Avg price</th><th>Status</th><th>Note</th></tr></thead><tbody></tbody></table></div>
+      </div>
+      <h3>Trades</h3>
+      <div class="table-wrap"><table id="dep-trades"><thead><tr><th>Bar</th><th>Date</th><th>Side</th><th>Shares</th><th>Price</th><th>Process</th><th>State</th><th>P&amp;L</th></tr></thead><tbody></tbody></table></div>
+    </div>
+  </section>
+</main>
+
+<div id="deploy-modal" class="modal" hidden>
+  <form id="deploy-form" class="modal-box wide">
+    <h2>Deploy to the server</h2>
+    <p class="muted" id="dp-source"></p>
+    <div class="grid">
+      <label class="span2">Name <input id="dp-name" maxlength="60" required></label>
+      <label>Start <select id="dp-start"><option value="1">immediately</option><option value="0">paused</option></select></label>
+    </div>
+
+    <h3>Price feed</h3>
+    <div class="grid">
+      <label>Source
+        <select id="dp-feed">
+          <option value="simulated">Simulated live stream</option>
+          <option value="replay">Replay history</option>
+          <option value="twelve_data">Live quotes (Twelve Data)</option>
+          <option value="broker">Quotes from the brokerage connection</option>
+        </select>
+      </label>
+      <label id="dp-symbol-wrap">Symbol <input id="dp-symbol" value="TEST"></label>
+      <label id="dp-symbols-wrap" hidden>Symbols <input id="dp-symbols" value="AAPL"></label>
+      <label id="dp-tick-wrap">Seconds per bar <input id="dp-tick" type="number" min="0.02" step="any" value="1"></label>
+      <label id="dp-interval-wrap" hidden>Poll every (seconds) <input id="dp-interval" type="number" min="5" step="1" value="60"></label>
+    </div>
+    <div id="dp-gen" class="grid">
+      <label>Pattern
+        <select id="dp-gen-kind"><option value="random_walk">Random walk</option><option value="sine">Oscillating</option><option value="trend_up">Uptrend</option><option value="trend_down">Downtrend</option><option value="crash">Crash</option></select>
+      </label>
+      <label>Seed <input id="dp-seed" type="number" min="0" value="7"></label>
+      <label>Start price <input id="dp-start-price" type="number" min="0.01" step="any" value="100"></label>
+      <label>Volatility %/bar <input id="dp-vol" type="number" min="0" step="any" value="1.5"></label>
+      <label>Cycle (bars) <input id="dp-period" type="number" min="2" value="60"></label>
+      <label id="dp-bars-wrap" hidden>History bars <input id="dp-bars" type="number" min="2" max="20000" value="500"></label>
+    </div>
+    <div id="dp-csv-wrap" hidden>
+      <label>CSV history (optional; replaces the pattern) <textarea id="dp-csv" rows="3" spellcheck="false" placeholder="date,close&#10;2024-01-02,101.5"></textarea></label>
+    </div>
+    <p id="dp-feed-note" class="hint"></p>
+    <div class="grid" id="dp-barsize-wrap">
+      <label>Market time per bar
+        <select id="dp-barsecs"><option value="86400" selected>1 day</option><option value="3600">1 hour</option><option value="300">5 minutes</option><option value="60">1 minute</option><option value="604800">1 week</option></select>
+      </label>
+    </div>
+
+    <h3>Execution</h3>
+    <div class="grid">
+      <label class="span2">Orders go to
+        <select id="dp-exec"><option value="">Simulated account (paper)</option></select>
+      </label>
+    </div>
+    <div id="dp-exec-broker" hidden>
+      <div class="grid">
+        <label>Max order value <input id="dp-lim-order" type="number" min="1" step="any" placeholder="connection default"></label>
+        <label>Max position value <input id="dp-lim-pos" type="number" min="1" step="any" placeholder="connection default"></label>
+        <label>Max number of orders <input id="dp-lim-n" type="number" min="1" step="1" placeholder="connection default"></label>
+      </div>
+      <div id="dp-exec-note" class="hint"></div>
+      <label id="dp-confirm-wrap" class="live-confirm" hidden><span id="dp-confirm-label"></span> <input id="dp-confirm" autocomplete="off" spellcheck="false"></label>
+    </div>
+
+    <h3>Account and risk</h3>
+    <div class="grid">
+      <label id="dp-cash-wrap">Starting cash <input id="dp-cash" type="number" min="1" step="any" value="100000"></label>
+      <label id="dp-fee-wrap">Fee (bps per fill) <input id="dp-fee" type="number" min="0" max="1000" step="any" value="0"></label>
+      <label>Max drawdown % <input id="dp-maxdd" type="number" min="0.1" max="100" step="any" placeholder="none"></label>
+      <label>Max position value <input id="dp-maxpos" type="number" min="1" step="any" placeholder="none"></label>
+    </div>
+    <p class="hint">At the drawdown limit the deployment closes all positions and pauses. A buy that would exceed the position limit is reduced.</p>
+
+    <h3>Parameters</h3>
+    <div id="dp-params" class="grid"></div>
+
+    <div id="dp-error" class="error-box" hidden></div>
+    <p id="dp-disclaimer" class="disclaimer"></p>
+    <div class="row"><button type="submit" id="dp-submit" class="btn primary">Deploy</button><button type="button" id="dp-cancel" class="btn">Cancel</button></div>
+  </form>
+</div>
+
+<div id="limits-modal" class="modal" hidden>
+  <form id="limits-form" class="modal-box">
+    <h2>Risk limits</h2>
+    <label>Max drawdown % (closes everything and pauses) <input id="lm-dd" type="number" min="0.1" max="100" step="any" placeholder="none"></label>
+    <label>Max position value <input id="lm-pos" type="number" min="1" step="any" placeholder="none"></label>
+    <p class="hint">Leave a field empty for no limit. Changes apply from the next bar and are recorded in the activity log.</p>
+    <div id="lm-error" class="error-box" hidden></div>
+    <div class="row"><button type="submit" class="btn primary">Save</button><button type="button" id="lm-cancel" class="btn">Cancel</button></div>
+  </form>
+</div>
+
+<div id="bt-modal" class="modal" hidden>
+  <div class="modal-box">
+    <h2 id="bt-title">Test connection</h2>
+    <p class="muted">Reads the account, positions and working orders, and optionally a quote. It never places an order.</p>
+    <label>Quote for symbol (optional) <input id="bt-symbol" placeholder="AAPL" spellcheck="false"></label>
+    <ul id="bt-steps" class="bt-steps"></ul>
+    <div class="row"><button id="bt-run" class="btn primary">Run test</button><button id="bt-close" class="btn">Close</button></div>
+  </div>
+</div>
+
+<div id="choice-modal" class="modal" hidden>
+  <div class="modal-box">
+    <h2 id="choice-title"></h2>
+    <p id="choice-text" class="muted"></p>
+    <div id="choice-buttons" class="row"></div>
+  </div>
+</div>
+
+<div id="modal" class="modal" hidden>
+  <form id="modal-form" class="modal-box">
+    <label>File name <input id="modal-input" autocomplete="off" spellcheck="false" placeholder="my-strategy"></label>
+    <p class="hint">Letters, digits, <code>-</code> and <code>_</code>. The <code>.sm</code> extension is added for you.</p>
+    <div class="row"><button type="submit" class="btn primary">Create</button><button type="button" id="modal-cancel" class="btn">Cancel</button></div>
+  </form>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" integrity="sha384-JUh163oCRItcbPme8pYnROHQMC6fNKTBWtRG3I3I0erJkzNgL7uxKlNwcrcFKeqF" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js" integrity="sha384-WmdflGW9aGfoBdHc4rRyWzYuAjEmDwMdGdiPNacbwfGKxBW/SO6guzuQ76qjnSlr" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.50.0/min/vs/loader.js" integrity="sha384-6dL6PzuB2Ah5xpeMPnVze1iuvqyP3DOLQwLqglKlj9vHFfC2k3hOLIU01CbLAtH+" crossorigin="anonymous"></script>
+<script src="/sml-language.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>

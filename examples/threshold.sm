@@ -1,0 +1,32 @@
+// Buy when the price falls below a floor, sell when it rises above a ceiling.
+// Account.buy/sell take a number of shares, so the amount to invest is divided by the price.
+
+use std::*;
+
+machine Threshold {
+    param equities: Vec<Symbol> as "Equities";
+    param account: Account = SandBox as "Brokerage Account";
+    param invest: float = 500.0 as "How Much to Invest";
+    param floor: float = 10.0 as "Buy below";
+    param ceiling: float = 15.0 as "Sell above";
+
+    init { launch (watch(sym), WAIT) for sym in equities; }
+
+    process watch(sym: Symbol) every 5 min {
+        let pos: Position;
+
+        listen Tickers[sym];
+
+        state WAIT: goto BUY on Tickers[sym] < floor;
+
+        state BUY: goto HOLD {
+            pos = account.buy(sym, invest / Tickers[sym].close);   // shares = money / price
+        }
+
+        state HOLD: goto SELL on Tickers[sym] > ceiling;
+
+        state SELL: goto WAIT {
+            pos = account.sell(sym, pos.shares);
+        }
+    }
+}

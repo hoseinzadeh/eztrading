@@ -1,0 +1,44 @@
+// Momentum: buy after two consecutive up days, then sell on a profit target or a stop loss.
+
+use std::*;
+
+// True when the price did not fall on either of the last two days.
+event rising(const signal ticker: Ticker) {
+    for i in 0..2 {
+        if ticker[-i days] < ticker[-(i+1) days] {
+            return false;
+        }
+    }
+    return true;
+}
+
+machine Momentum {
+    param equities: Vec<Symbol> as "Equities";
+    param account: Account = SandBox as "Brokerage Account";
+    param invest: float = 1000.0 as "How Much to Invest";
+    param take_profit: float = 0.10 as "Profit target";
+    param stop_loss: float = 0.05 as "Stop loss";
+
+    init { launch (trade(sym), FLAT) for sym in equities; }
+
+    process trade(sym: Symbol) every 1 day {
+        let pos: Position;
+        let entry: float;
+
+        listen Tickers[sym];
+
+        state FLAT: goto ENTER on rising(Tickers[sym]);
+
+        state ENTER: goto LONG {
+            entry = Tickers[sym].close;
+            pos = account.buy(sym, invest / entry);
+        }
+
+        state LONG:
+            goto PROFIT on Tickers[sym] >= entry * (1 + take_profit),
+            goto STOP on Tickers[sym] <= entry * (1 - stop_loss);
+
+        state PROFIT: goto FLAT { pos = account.sell(sym, pos.shares); }
+        state STOP: goto FLAT { pos = account.sell(sym, pos.shares); }
+    }
+}

@@ -1,0 +1,42 @@
+// Buy a dip with a limit order, then protect the position with a stop-loss and a profit target.
+// Orders rest at the broker until the price reaches them; the strategy reads their status.
+
+use std::*;
+
+machine Bracket {
+    param equities: Vec<Symbol> as "Equities";
+    param account: Account = SandBox as "Brokerage Account";
+    param invest: float = 1000.0 as "How Much to Invest";
+    param dip: float = 0.02 as "Buy this far below the price";
+    param target: float = 0.04 as "Profit target";
+    param stop: float = 0.03 as "Stop loss";
+
+    init { launch (swing(sym), WAIT) for sym in equities; }
+
+    process swing(sym: Symbol) every 1 day {
+        let entry: Order;
+        let take: Order;
+        let protect: Order;
+        let level: float;
+
+        listen Tickers[sym];
+
+        state WAIT: goto ENTERING {
+            level = Tickers[sym].close * (1 - dip);
+            entry = account.buy_limit(sym, invest / level, level);
+        }
+
+        state ENTERING:
+            goto PROTECT on entry.is_filled(),
+            goto WAIT on !entry.is_open();       // refused or cancelled: try again
+
+        state PROTECT: goto HOLD {
+            protect = account.sell_stop(sym, entry.filled(), entry.price() * (1 - stop));
+            take = account.sell_limit(sym, entry.filled(), entry.price() * (1 + target));
+        }
+
+        state HOLD: goto DONE on protect.is_filled() || take.is_filled();
+
+        state DONE: goto WAIT { account.cancel_all(); }   // pull the order that did not trigger
+    }
+}

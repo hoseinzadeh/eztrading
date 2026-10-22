@@ -1,0 +1,25 @@
+{
+  "name": "sml-language",
+  "displayName": "State Machine Language",
+  "description": "Syntax highlighting for SML language",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.73.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [{
+      "id": "sml",
+      "aliases": ["State Machine Language", "SML"],
+      "extensions": [".sm"],
+      "configuration": "./language-configuration.json"
+    }],
+    "grammars": [{
+      "language": "sml",
+      "scopeName": "source.sml",
+      "path": "./syntaxes/sml.tmLanguage.json"
+    }]
+  }
+}

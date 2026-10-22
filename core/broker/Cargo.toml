@@ -1,0 +1,21 @@
+[package]
+name = "broker"
+version = "0.1.0"
+edition = "2021"
+description = "A small brokerage abstraction: one Broker trait, a deterministic paper broker, a declarative REST adapter and safety guards"
+
+[lib]
+name = "ezt_broker"
+path = "src/lib.rs"
+
+[[bin]]
+name = "ezt-fakebroker"
+path = "src/bin/fakebroker.rs"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true, features = ["float_roundtrip"] }
+reqwest = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3"

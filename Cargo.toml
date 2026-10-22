@@ -1,0 +1,145 @@
+[workspace]
+members = [
+  "core/engine/",
+  "core/transpiler/",
+  "core/agent/",
+  "core/broker/",
+  "core/studio/",
+  "servers/datasrv/",
+  "servers/jobsrv/",
+  "servers/srvman/",
+  "servers/com/",
+  "servers/cli/",
+  "servers/codesrv/",
+]
+
+[workspace.dependencies.actix-web]
+version = "4.3.1"
+features = ["openssl"]
+
+[workspace.dependencies.bincode]
+version = "1.3.3"
+
+[workspace.dependencies.chrono]
+version = "0.4.24"
+features = ["serde"]
+
+[workspace.dependencies.clap]
+version = "4.2.4"
+features = ["derive", "env"]
+
+[workspace.dependencies.colored]
+version = "2.0.0"
+
+[workspace.dependencies.crossbeam-channel]
+version = "0.5.8"
+
+[workspace.dependencies.ctrlc]
+version = "3.2.5"
+
+[workspace.dependencies.dlopen]
+version = "0.1.8"
+
+[workspace.dependencies.dlopen_derive]
+version = "0.1.4"
+
+[workspace.dependencies.futures]
+version = "0.3.28"
+
+[workspace.dependencies.futures-channel]
+version = "0.3.28"
+
+[workspace.dependencies.futures-util]
+version = "0.3.28"
+default-features = false
+features = ["sink", "std"]
+
+[workspace.dependencies.home]
+version = "0.5.5"
+
+[workspace.dependencies.lazy_static]
+version = "1.4.0"
+
+[workspace.dependencies.libc]
+version = "0.2.142"
+
+[workspace.dependencies.memmap2]
+version = "0.5.10"
+
+[workspace.dependencies.mysql]
+version = "23.0.1"
+
+[workspace.dependencies.mysql_common]
+version = "0.29.2"
+default-features = false
+features = ["chrono"]
+
+[workspace.dependencies.native-tls]
+version = "0.2.11"
+
+[workspace.dependencies.net2]
+version = "0.2.38"
+
+[workspace.dependencies.num_cpus]
+version = "1.15.0"
+
+[workspace.dependencies.once_cell]
+version = "1.17.1"
+
+[workspace.dependencies.openssl]
+version = "0.10.52"
+features = ["v110"]
+
+[workspace.dependencies.rand]
+version = "0.8.5"
+
+[workspace.dependencies.raw_sync]
+version = "0.1.5"
+
+[workspace.dependencies.regex]
+version = "1.8.1"
+
+[workspace.dependencies.reqwest]
+version = "0.11.16"
+features = ["blocking", "json"]
+
+[workspace.dependencies.rustyline]
+version = "11"
+
+[workspace.dependencies.serde]
+version = "1.0.160"
+features = ["derive"]
+
+[workspace.dependencies.serde_json]
+version = "1.0.96"
+
+[workspace.dependencies.shared_memory]
+version = "0.12.4"
+
+[workspace.dependencies.subprocess]
+version = "0.2.9"
+
+[workspace.dependencies.tokio]
+version = "1.28.0"
+features = ["rt", "rt-multi-thread", "macros", "full"]
+
+[workspace.dependencies.tokio-stream]
+version = "0.1.14"
+
+[workspace.dependencies.tokio-tungstenite]
+version = "0.18.0"
+features = [ "native-tls" ]
+
+[workspace.dependencies.toml]
+version = "0.7.3"
+
+[workspace.dependencies.tungstenite]
+version = "0.19.0"
+features = ["native-tls"]
+
+[workspace.dependencies.url]
+version = "2.3.1"
+
+[workspace.dependencies.warp]
+version = "0.3.4"
+features = ["tls"]

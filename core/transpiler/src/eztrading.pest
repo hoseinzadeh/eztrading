@@ -1,0 +1,270 @@
+num = @{ int ~ (!range_op ~ "." ~ ASCII_DIGIT*)? ~ (^"e" ~ int)? }
+int = { ("+" | "-")? ~ ASCII_DIGIT+ }
+duration = @{ ASCII_DIGIT+ ~ "_" ~ ("ms" | "s" | ("milli" ~ ("sec" ~ "ond")? |
+                                    "sec" ~ "ond"? | "min" ~ "ute"? | "hr" |
+                                    "hour" | "day" | "week" | "month" | "year") ~ "s"?)}
+prd = _{ milli | second | month | minute | hour | day | week | year }
+clock = { clock_num ~ (am|pm)? }
+clock_num = @{ dbl_digit ~ ":" ~ dbl_digit ~ (":" ~ dbl_digit)? }
+dbl_digit = { ASCII_DIGIT{2} }
+am = { ^"am" }
+pm = { ^"pm" }
+
+// field = { (field_ident | quoted_string ~ indx?) ~ (!range_op ~ "." ~ field_ident_cont)* }
+// field_ident = _{ typ ~ field_packed* }
+// field_ident_cont = _{ ident ~ field_packed* }
+// field_packed = _{ indx+ ~ pack? | pack ~ field_packed* }
+path = _{ ident ~ ("::" ~ ident)* ~ ("::" ~ all)? }
+all = { "*" }
+ident = { !keywords ~ ident_atom }
+ident_atom = ${ char ~ (char | ASCII_DIGIT)* }
+char = { ASCII_ALPHA | "_" }
+keywords = ${ ("if" | "else" | "for" | "in" | "machine" | "static" | "process" |
+              "param" | "init" | "signal" | "let" | "state" | "goto" | "on" |
+              "event" | "return" | "ref" | "top" | "fn" | "const" | "launch" |
+              "emit" | "attach"  | "listen"| "every" | "class" | "pub" | "use" |
+              "mut" | primary_types) ~ !char }
+primary_types = { "int8" | "int16" | "int32" | "int64" |
+                 "uint8" |"uint16" |"uint32" |"uint64" |
+                 "int"   | "float" | "bool" }
+
+quoted_string = {
+    "'"
+    ~ quoted_character*
+    ~ "'"
+}
+quoted_character = { "\\'" |
+    !"'"        // if the following text is not double-quote
+    ~ ANY        // then consume one character
+}
+
+double_quoted_string = {
+    "\""
+    ~ double_quoted_character*
+    ~ "\""
+}
+double_quoted_character = { "\\\"" |
+    !"\""        // if the following text is not double-quote
+    ~ ANY        // then consume one character
+}
+
+pack = {
+    "(" ~ ")" |
+    "(" ~ (expr ~ ",")* ~ expr ~ ")"
+}
+indx = {
+    "[" ~ "]" |
+    "[" ~ (expr ~ ",")* ~ expr ~ "]"
+}
+temp = {
+    !"<<" ~ "<" ~ ">" |
+    !"<<" ~ "<" ~ (signal_or_typ ~ ",")* ~ signal_or_typ ~ ">"
+}
+parn = { "(" ~ expr ~ ")" }
+// atom = { num | parn | vec | field }
+atom = { duration | num | parn | vec | ident | double_quoted_string | quoted_string }
+expr = { prefix* ~ atom ~ postfix* ~ prd? ~ (infix ~ prefix* ~ atom ~ postfix* ~ prd?)* }
+
+
+block_comment = _{ "/*" ~ (!"*/" ~ ANY)* ~ "*/" }
+line_comment = _{ "//" ~ (!NEWLINE ~ ANY)* }
+
+infix = _{ assign | math8 | math9 | math1 | math2 |
+           math5 | math6 | math7 | math3 | math4 | eq | member |
+           scope | inline_if}
+
+    // Unary operators
+    prefix = { not | ref_ | neg }
+
+    not = { "!" }
+    ref_ = { "ref" }
+    neg = { "-" }
+
+    postfix = _{ indx | pack | temp }
+
+    // Arithmetics level 1
+    //  * operator % adds or subtracts a fraction (e.g., '10 % 25 = 12.5' or
+    //    '10 % -25 = 7.5')
+    //  * operator / is the reminder operator
+    math1 = { "*" | "/" | "%" }
+
+    // Arithmetics level 2
+    math2 = { "+" | "-" }
+
+    // Arithmetics level 3
+    math3 = { "<<" | ">>" }
+
+    // Arithmetics level 4
+    math4 = { "&" }
+
+    // Arithmetics level 5
+    math5 = { "^" }
+
+    // Arithmetics level 6
+    math6 = { "|" }
+
+    // Arithmetics level 7, Require parentheses 
+    math7 = { "==" | "!=" | "<=" | ">=" | "<" | ">" }
+
+    // Arithmetics level 8
+    math8 = { "&&" }
+
+    // Arithmetics level 9
+    math9 = { "||" }
+    
+    member = { "." }
+
+    scope = { "::" }    
+
+    // Assignments
+    eq = { "=" }
+    assign = { "+=" | "-=" | "*=" | "/=" | "%=" |
+              "&=" | "|=" | "^=" | "<<=" | ">>=" | "/=" }
+    inline_if = { "?" ~ expr ~ ":" }
+
+directive = { "builtin" }
+
+// Model object
+machine = { "machine" ~ ident ~ ( ":" ~ (typ ~ ",")* ~ typ )? ~ model_body }
+model_body = { "{" ~ (member_var | process | launcher | event | func)* ~ "}" }
+member_var = _{ (param | pub_var | signal | typed_var | typed_const | pub_var |
+                 pub_signal | pub_const | typed_static | static_signal ) ~ ";" }
+
+// User-defined structs
+module = { directive? ~ "class" ~ ident ~ ("<" ~ (ident ~ ",")* ~ ident ~ ">")? ~
+          (":" ~ (typ ~ ",")* ~ typ)? ~ module_body }
+module_body = { "{" ~ (member_var | init | func | event | index)* ~ "}" }
+
+// Enumeration
+enumeration = { "enum" ~ "{" ~ option* ~ "}" }
+option = { ident ~ ("(" ~ (typ ~ ",")* ~ typ ~ ")" )? }
+
+// Declaration
+def = _{ ident ~ (":" ~ typ)? ~ ("=" ~ (vec | expr))? }
+// def = _{ ident ~ ((":" ~ typ ~ ("=" ~ (vec | expr))?) | ("=" ~ (vec | expr))) }
+def_value = _{ ident ~ "=" ~ (vec | expr) }
+array = _{ "[" ~ expr ~ "]" }
+typed_def = _{ ident ~ ":" ~ typ ~ ("=" ~ (vec | expr))? }
+typ = { (typ_path | primary_types) ~ array? }
+signal_or_typ = { signal_kw? ~ (typ_path | primary_types) }
+signal_kw = { "signal" }
+pub_kw = { "pub" }
+typ_path = { ident ~ (temp | "::" ~ typ_path)* }
+param = { "param" ~ (typed_def ~ display? ~ ",")* ~ typed_def ~ display? }
+cnst = { "const" ~ (def ~ ",")* ~ def }
+typed_const = { "const" ~ (typed_def ~ ",")* ~ typed_def }
+pub_const = { "pub" ~ "const" ~ (typed_def ~ ",")* ~ typed_def }
+statc = { "static" ~ (def ~ ",")* ~ def }
+typed_static = { "static" ~ (typed_def ~ ",")* ~ typed_def }
+var = { "let" ~ (def ~ ",")* ~ def }
+mutable = { "mut" ~ (def_value ~ ",")* ~ def_value }
+typed_var = { "let" ~ (typed_def ~ ",")* ~ typed_def }
+pub_var = { "pub" ~ (typed_def ~ ",")* ~ typed_def }
+signal = { "signal" ~ (def ~ ",")* ~ def }
+pub_signal = { "pub" ~ "signal" ~ (def ~ ",")* ~ def }
+static_signal = { "static" ~ "signal" ~ (def ~ ",")* ~ def }
+vec = { "{" ~ ((vec | expr) ~ ",")* ~ (vec | expr)? ~ "}" }
+options = { "{" ~ (expr ~ ("as" ~ double_quoted_string)? ~ ",")* ~ expr ~ ("as" ~ double_quoted_string)? ~ "}" }
+
+// Param display settings
+display = { "as" ~ double_quoted_string ~ ("options" ~ options | range)? }
+
+// Function body
+block = { "{" ~ (statement | statement_block)* ~ "}" | cpp_block }
+block_with_launch = { "{" ~ (statement | statement_block | launch)* ~ "}" }
+event_block = { "{" ~ (event_statement | statement_block)* ~ "}" }
+statement = { (common_statements) ~ ";" }
+event_statement = { (common_statements | mutable | listen | record) ~ ";" }
+statement_block = { if_clouse | loop_block }
+common_statements = _{ import | cnst | statc | var | static_signal |
+                       inline_loop | ret | emit | expr }
+launch = { "launch" ~ "(" ~ ident ~ pack? ~ "," ~ ident ~ ")" ~ for_stmt? ~ ";" }
+ret = { "return" ~ expr }
+emit = { "emit" ~ expr }
+listen = { "listen" ~ (expr ~ ",")* ~ expr }
+record = { "record" ~ expr ~ "in" ~ expr }
+if_clouse = { "if" ~ expr ~ block ~ ("else" ~ block)?}
+loop_block = _{ for_loop | while_loop | just_loop | inline_loop }
+for_loop = { for_stmt ~ block }
+while_loop = { "while" ~ expr ~ block }
+just_loop = { "loop" ~ block }
+inline_loop = { expr ~ for_stmt }
+for_stmt = { "for" ~ ident ~ "in" ~ (range | expr) }
+some = _{ ident ~ "(" ~ ident ~ ")" }
+
+// Ranges
+range = { expr ~ range_op ~ expr }
+range_op = _{ range_inclusive | range_exclusive }
+range_exclusive = { ".." }
+range_inclusive = { "..=" }
+
+// Function arguments
+arg = { constant? ~ (signal_ref | refr)? ~ ident ~ ":" ~ typ }
+signal_ref = { "signal" }
+refr = { "ref" }
+constant = { "const" }
+args = { "(" ~ (arg ~ ",")* ~ arg? ~ ")" }
+
+// Function declarations
+init = { "init" ~ block }
+launcher = { "init" ~ block_with_launch }
+func = { directive? ~ modifier? ~ "fn" ~ ident ~ args? ~ ("->" ~ (refr | signal_ref)? ~ typ)? ~ block }
+event = { "event" ~ ident ~ args? ~event_block }
+index = { "index" ~ args ~ "->" ~ (refr | signal_ref)? ~ typ ~ block }
+modifier = { "static" | "const" }
+
+// Process
+process = { "process" ~ ident ~ args? ~ interval? ~ process_body }
+process_body = { "{" ~ (proc_statement | proc_statement_block)* ~ "}" }
+state_block = { "{" ~ (proc_statement | proc_statement_block)* ~ "}" }
+
+// Interval
+interval = { continual | "every" ~ ( period | expr ) ~ ("from" ~ expr)? }
+period = _{ milli | second | minute | hour | day ~ at? | week ~ at? | month ~ on? | year }
+continual = { "continuously" }
+at = { "at" ~ clock }
+on = _{ "on" ~ int ~ at? }
+yon = _{ "on" ~ date ~ at? }
+date = @{ int ~ "/" ~ int }
+milli = @{ "milli" ~ ("sec" ~ "ond"?)? ~ "s"? | "ms"}
+second = @{ "sec" ~ "ond"? ~ "s"? | "s" }
+minute = @{ "min" ~ "ute"? ~ "s"? | "m" }
+hour = @{ "hour" ~ "s"? | "hrs" }
+day = @{ "day" ~ "s"? | "d" }
+week = @{ "week" ~ "s"? | "w" }
+month = @{ "month" ~ "s"? | "mo" }
+year = @{ "year" ~ "s"? | "yr" }
+
+// Process body
+proc_statement = { (import | cnst | statc | var | static_signal | signal |
+                    inline_loop | mutable | emit | listen | record | expr) ~ ";" }
+proc_statement_block = { if_clouse | loop_block | state }
+state = { "state" ~ ident ~ (":" ~ (goto ~ ",")* ~ goto)? ~ (state_block | ";") }
+goto = { "goto" ~ ident ~ ("on" ~ expr)? }
+
+// Include
+// Example:                    namespace
+//  |-main.sm: load lib;       main
+//  `-lib                      main::lib
+//     |-module1.sm            main::lib::module1
+//     `-module2.sm            main::lib::module2
+//
+// Also, lib::* hides lib. For example, `use lib::*` will add `main::module1`
+// and `main::module2`
+import = { "use" ~ path }  // Use a namespace in the current context for searching defs
+// import = { "use" ~ import_path }  // Use a namespace in the current context for searching defs
+// import_path = _{ import_pack | path }
+// import_pack = { path_no_all ~ "::" ~ "{" ~ (import_path ~ ",")* ~ import_path ~ "}" }
+
+// Embedded C++ code
+cpp = { "{!%" ~ cpp_code ~ "%}"}      // Translate to `inner`
+cpp_block = { "{%" ~ cpp_code ~ "%}"} // Translate to `{ inner }`
+cpp_code = { cpp_char* }
+cpp_char = { !("{%" | "%}" | "{!%") ~ ANY }
+
+global_var = { directive? ~ (typed_var | typed_const | signal) }
+code = _{ SOI ~ ( machine | event | (global_var | import) ~ ";" |
+          func | module | cpp )* ~ EOI }
+
+WHITESPACE = _{ " " | "\t" | NEWLINE }
+COMMENT = _{ line_comment | block_comment }

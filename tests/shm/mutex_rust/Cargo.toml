@@ -1,0 +1,13 @@
+[package]
+name = "shm"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[workspace]
+
+[dependencies]
+shared_memory = "0.12.4"
+raw_sync = "0.1.5"
+env_logger = "*"
+clap = {version = "4.1.13", features = ["derive"]}

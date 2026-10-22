@@ -1,0 +1,25 @@
+{
+  "tests": [
+    {
+      "name": "buys the dip with a limit order and takes the profit target",
+      "prices": [100, 100, 97, 96, 100, 105, 105],
+      "expect": {
+        "trades": [ { "bar": 2, "side": "buy", "price": 98 }, { "bar": 5, "side": "sell" } ],
+        "final_shares": 0
+      }
+    },
+    {
+      "name": "the stop-loss limits the damage on a drop",
+      "prices": [100, 100, 97, 96, 90, 90, 90],
+      "expect": {
+        "trades": [ { "bar": 2, "side": "buy", "price": 98 }, { "bar": 4, "side": "sell" } ],
+        "final_shares": 0
+      }
+    },
+    {
+      "name": "never buys when the price does not dip",
+      "prices": [100, 101, 102, 103],
+      "expect": { "max_trades": 0 }
+    }
+  ]
+}

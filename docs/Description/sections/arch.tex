@@ -1,0 +1,80 @@
+
+
+\section{System Architecture}
+\label{sec:sys-arch}
+
+The ezTrading platform is designed with a modular architecture that emphasizes scalability, flexibility, and maintainability. This section delves into the core components that constitute the infrastructure of the ezTrading platform.
+
+\subsection{Frontend}
+The frontend, designed using cutting-edge web technologies, aims to offer a responsive and user-centric experience. It is accessible on both web and mobile devices, comprising:
+
+\begin{itemize}
+  \item Strategy Builder: A user-friendly interface enabling users to easily construct and oversee their trading bots.
+  \item User Dashboard: A comprehensive dashboard for users to:
+    \begin{itemize}
+      \item Monitor the performance of their trading bots
+      \item Manage subscriptions and preferences
+      \item Track their linked account portfolio in real-time
+      \item Execute manual trading and brokerage account management
+    \end{itemize}
+\end{itemize}
+
+\subsection{Backend}
+The backend serves as the computational and logical core of the platform, tasked with:
+
+\begin{itemize}
+  \item User Management: Handling login sessions, security, token generation, credits, history, etc.
+  \item Linked Accounts: Connecting to multiple brokerage accounts, gathering the information, and placing market orders and managing payouts for the bot developers via direct-deposit or wire-transfer.
+  \item Strategy Management: Handling the storage, retrieval, and execution of user-generated trading strategies.
+  \item Data Aggregation: Gathering real-time and historical data from a variety of sources for trading analysis.
+  \item API Endpoints: Facilitating robust communication between the frontend and backend through a well-defined set of APIs.
+\end{itemize}
+
+\subsection{Database}
+\label{subsec:database}
+
+The ezTrading platform's database is designed to be a secure repository for all trading bot strategies, user subscriptions, and other essential configurations. Access to the database is highly restricted and is only possible through TLS-encrypted RESTful APIs, authenticated via OAuth~2.0.
+
+\begin{itemize}
+  \item Security Measures: Strong encryption and access control mechanisms ensure the privacy and safety of user data.
+  \item RESTful APIs: To provide a consistent and secure interaction with the database, only authenticated API calls are allowed for operations such as data retrieval, update, or deletion. TLS and OAuth~2.0 are used for robust and secure authentication.
+  \item Data Storage and Management: The database holds key pieces of information, such as bot strategies, user subscriptions, and other settings. This enables users to recover, duplicate, or adjust their trading bots with minimal effort.
+\end{itemize}
+
+Given the architecture, even during the development phase, each bot strategy and its corresponding configurations remain safely stored until they are either published or updated. All interactions, whether they involve publishing a new bot, subscribing to an existing one, or modifying bot parameters, are all funneled securely through the API, ensuring both data integrity and security.
+
+
+\subsection{Security}
+\label{subsec:security}
+
+Security is a paramount concern for the ezTrading platform, given the sensitive nature of financial transactions and user data. A multi-faceted approach ensures the highest levels of data privacy, code integrity, and equitable access to resources.
+
+\begin{itemize}
+  \item \textbf{State Machine Language (SML):} In a novel approach to securing the backend, ezTrading has developed a new programming language called State Machine Language (SML). This language is purpose-built for data analysis tasks but designed to restrict functionalities that could be exploited for malicious activities. SML thus serves as an additional layer of defense against server intrusions.
+
+  \item \textbf{TLS Encryption:} The information sent through APIs is encrypted using TLS.
+
+  \item \textbf{OAuth 2.0 Authentication:} All API access to the database is secured using OAuth~2.0 authentication mechanisms, ensuring that only authorized users can perform specific actions.
+
+  \item \textbf{Fair Scheduler:} The platform employs a scheduler that allocates computational resources fairly among all active trading bots. This ensures that no single bot or user can monopolize system resources, thereby maintaining the platform's performance and reliability.
+  
+  \item \textbf{Multi-Factor Authentication}: To enhance account security, ezTrading offers a 2-Step Verification process. This involves a two-tier authentication mechanism, where a user must verify their identity through an additional method, such as a mobile app or SMS, in addition to the regular password.
+\end{itemize}
+
+The combination of these features offers a robust security framework, safeguarding both the integrity of trading strategies and the privacy of user data.
+
+\subsection{Third-Party Integrations}
+\label{subsec:third-party-integrations}
+
+ezTrading is not just a standalone platform but a flexible ecosystem engineered for integrative capabilities. It allows for the seamless addition of third-party applications specifically for signal generation in trading bots. This is facilitated through:
+
+\begin{itemize}
+  \item Inbound Webhooks: Enables third-party services to send trading signals and other relevant data to the ezTrading platform. This allows for more dynamic and intelligent trading strategies that can adapt to external inputs.
+  \item Outbound Webhooks: Allows the ezTrading platform to send event-driven alerts or trading signals to external services. This feature enhances the scope of automation and allows users to create a more interconnected trading environment.
+\end{itemize}
+
+These webhook integrations not only add an extra layer of flexibility but also open up avenues for users to tap into diverse trading strategies and analytics tools, further enriching the platform's capabilities.
+
+
+\subsection{Scalability}
+Built on a microservices architecture, the ezTrading platform is designed to horizontally scale to accommodate a growing user base and increased computational requirements.

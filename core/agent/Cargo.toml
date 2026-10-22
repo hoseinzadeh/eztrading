@@ -1,0 +1,20 @@
+[package]
+name = "agent"
+version = "0.1.0"
+edition = "2021"
+description = "ezt-agent: an LLM agent that writes, repairs and explains SML trading strategies, checked by the real compiler"
+
+[lib]
+name = "ezt_agent"
+path = "src/lib.rs"
+
+[[bin]]
+name = "ezt-agent"
+path = "src/main.rs"
+
+[dependencies]
+clap = { workspace = true }
+regex = { workspace = true }
+reqwest = { workspace = true }
+serde_json = { workspace = true }
+tempfile = "3"

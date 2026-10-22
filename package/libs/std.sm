@@ -1,0 +1,31 @@
+
+builtin class Ticker {
+    fn history -> Ticker { /* compiler built-in */ }
+}
+
+builtin class Account {
+    event buy(sym: int) {}
+    event sell(sym: int) {}
+}
+
+builtin fn printf { /* compiler built-in */ }
+builtin fn sleep { /* compiler built-in */ }
+builtin class std {
+    static fn srand -> int { /* compiler built-in */ }
+    static fn rand -> int { /* compiler built-in */ }
+    static fn time -> int { /* compiler built-in */ }
+}
+
+builtin class HashMap<K, V> {
+    index (key: K) -> V { /* compiler built-in */ }
+}
+
+builtin let Tickers: HashMap<Symbol, signal Ticker>;
+
+builtin class Position {
+    pub value: int;
+}
+
+builtin class duration {
+    fn days { /* compiler built-in */ }
+}

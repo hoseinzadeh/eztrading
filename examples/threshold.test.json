@@ -1,0 +1,29 @@
+{
+  "tests": [
+    {
+      "name": "buys below the floor and sells above the ceiling",
+      "prices": [12, 11, 9, 9.5, 16, 17],
+      "params": { "floor": 10, "ceiling": 15 },
+      "expect": {
+        "trades": [
+          { "bar": 3, "side": "buy", "price": 9.5 },
+          { "bar": 5, "side": "sell", "price": 17 }
+        ],
+        "final_shares": 0,
+        "final_state": { "watch(TEST)": "WAIT" }
+      }
+    },
+    {
+      "name": "does nothing while the price stays between floor and ceiling",
+      "prices": [12, 13, 14, 13, 12],
+      "params": { "floor": 10, "ceiling": 15 },
+      "expect": { "max_trades": 0, "final_state": { "watch(TEST)": "WAIT" } }
+    },
+    {
+      "name": "holds through a dip that does not reach the ceiling",
+      "prices": [9, 9, 9, 12, 11, 12],
+      "params": { "floor": 10, "ceiling": 15 },
+      "expect": { "trades": [ { "bar": 1, "side": "buy" } ], "final_state": { "watch(TEST)": "HOLD" } }
+    }
+  ]
+}

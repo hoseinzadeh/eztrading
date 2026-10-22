@@ -1,0 +1,45 @@
+{
+  "name": "alpaca-paper",
+  "description": "Alpaca paper trading (US stocks). Keys: ALPACA_KEY_ID and ALPACA_SECRET_KEY from your Alpaca paper account. Written from Alpaca's public API description; check it with the Test button before relying on it.",
+  "environment": "paper",
+  "base_url": "https://paper-api.alpaca.markets",
+  "headers": {
+    "APCA-API-KEY-ID": "${ALPACA_KEY_ID}",
+    "APCA-API-SECRET-KEY": "${ALPACA_SECRET_KEY}"
+  },
+  "limits": { "max_order_value": 2000, "max_position_value": 5000, "max_orders": 200 },
+  "account": {
+    "path": "/v2/account",
+    "map": { "cash": "cash", "equity": "equity", "buying_power": "buying_power", "currency": "currency" }
+  },
+  "positions": {
+    "path": "/v2/positions",
+    "map": { "symbol": "symbol", "qty": "qty", "avg_cost": "avg_entry_price", "market_value": "market_value" }
+  },
+  "quote": {
+    "path": "https://data.alpaca.markets/v2/stocks/{symbol}/quotes/latest",
+    "at": "quote",
+    "map": { "bid": "bp", "ask": "ap" }
+  },
+  "place_order": {
+    "path": "/v2/orders",
+    "market": { "symbol": "{symbol}", "qty": "{qty}", "side": "{side}", "type": "market", "time_in_force": "{tif}", "client_order_id": "{client_id}" },
+    "limit": { "symbol": "{symbol}", "qty": "{qty}", "side": "{side}", "type": "limit", "limit_price": "{limit}", "time_in_force": "{tif}", "client_order_id": "{client_id}" },
+    "stop": { "symbol": "{symbol}", "qty": "{qty}", "side": "{side}", "type": "stop", "stop_price": "{stop}", "time_in_force": "{tif}", "client_order_id": "{client_id}" }
+  },
+  "cancel_order": { "method": "DELETE", "path": "/v2/orders/{id}" },
+  "order": { "path": "/v2/orders/{id}" },
+  "open_orders": { "path": "/v2/orders", "query": { "status": "open" } },
+  "order_by_client_id": { "path": "/v2/orders:by_client_order_id", "query": { "client_order_id": "{client_id}" } },
+  "order_map": {
+    "id": "id", "client_id": "client_order_id", "symbol": "symbol", "side": "side", "qty": "qty",
+    "filled_qty": "filled_qty", "avg_price": "filled_avg_price", "state": "status"
+  },
+  "states": {
+    "new": "open", "accepted": "open", "pending_new": "open", "accepted_for_bidding": "open", "held": "open",
+    "pending_cancel": "open", "pending_replace": "open", "replaced": "open",
+    "partially_filled": "partially_filled", "filled": "filled",
+    "canceled": "canceled", "done_for_day": "canceled",
+    "expired": "expired", "rejected": "rejected", "suspended": "rejected", "stopped": "rejected"
+  }
+}

@@ -1,0 +1,59 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "sml",
+	"patterns": [
+		{
+			"begin" : "{!?%",
+			"end" : "%}",
+			"patterns": [{"include": "source.cpp"}]
+		},
+		{
+			"include": "#keywords"
+		},
+		{
+			"include": "#strings"
+		},
+		{
+			"include": "#line-comments"
+		},
+		{
+			"include": "#block-comments"
+		}
+	],
+	"repository": {
+		"keywords": {
+			"patterns": [{
+				"name": "keyword.control",
+				"match": "\\b(if|builtin|else|every|continuously|update|true|false|as|listen|options|record|at|fn|for|from|in|pub|index|ref|machine|on|loop|state|process|param|init|signal|let|state|goto|event|launch|return|rust|use|top|emit|class|const|static)\\b"
+			},{
+				"name": "entity.name.type",
+				"match": "\\b(u?int(8|16|32|64)?|float|double|bool)\\b"
+			},{
+				"name": "entity.name.function",
+				"match": "\\b(\\d{2}:\\d{2}(:\\d{2})?)((?i)\\s*(am|pm))?\\b"
+			}]
+		},
+		"strings": {
+			"name": "string.quoted.double.eztrading",
+			"begin": "\"",
+			"end": "\"",
+			"patterns": [
+				{
+					"name": "constant.character.escape.eztrading",
+					"match": "\\\\."
+				}
+			]
+		},
+		"line-comments": {
+			"name": "comment.line.double-slash",
+			"begin": "//",
+			"end": "$"
+		},
+		"block-comments": {
+			"name": "comment.block",
+			"begin": "/\\*",
+			"end": "\\*/"
+		}
+	},
+	"scopeName": "source.sml"
+}

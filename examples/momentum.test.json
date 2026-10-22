@@ -1,0 +1,25 @@
+{
+  "tests": [
+    {
+      "name": "enters after two up days and takes profit at +10%",
+      "prices": [10, 11, 11.5, 12, 12.5, 13.5, 13, 12, 11, 10],
+      "expect": {
+        "trades": [
+          { "bar": 3, "side": "buy", "price": 12 },
+          { "bar": 6, "side": "sell", "price": 13 }
+        ],
+        "final_state": { "trade(TEST)": "FLAT" }
+      }
+    },
+    {
+      "name": "never enters in a falling market",
+      "prices": [10, 9.5, 9, 8.5, 8, 7.5],
+      "expect": { "max_trades": 0 }
+    },
+    {
+      "name": "stops out when the price falls 5% below entry",
+      "prices": [10, 11, 12, 12, 11, 10, 10],
+      "expect": { "trades": [ { "side": "buy" }, { "side": "sell" } ], "final_state": { "trade(TEST)": "FLAT" } }
+    }
+  ]
+}

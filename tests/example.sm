@@ -1,0 +1,126 @@
+// Example Bot in SML language
+
+use std::*;
+
+machine TestMachine {
+    init { launch (main, INIT); }
+
+    process main {
+        state INIT {}
+    }
+}
+
+machine TrailingStopWithProfit {
+    param interval: duration = 5 min as "Interval" options {
+        5 mins as "Every 5 Minutes",
+        1 hour as "Hourly",
+        1 day as "Daily",
+        1 week as "Weekly",
+        2 weeks as "Biweekly",
+        1 month as "Monthly",
+        2 months as "Bimonthly"
+    };
+    param change: float = 0.05 as "Sensitivity"; // 5%
+    param equities: Vec<Symbol> /* = {"AAPL"} */ as "Equities"; // TODO: Default? Modify?
+    param account: Account = SandBox as "Brokerage Account";
+    param invest: float = 1000.0 as "How Much to Invest";
+    param profit_rate: float = 0.20 as "When to profit"; // Target profit rate
+    param stop_loss: float = 0.05 as "Stop Loss";
+
+    init {
+        launch (main(sym), INIT) for sym in equities;
+        launch (clock, INIT);
+    }
+
+    process main(sym: Symbol) every interval {
+        let pos: Position;
+        let target_profit_value: float;
+        let stop_loss_value: float;
+        static mobile = false;
+
+        listen Tickers[sym];
+
+        state INIT: goto ENTER on const_positive(Tickers[sym], change);
+
+        state ENTER:
+            goto HOLD on pos > 0,
+            goto INIT on pos == 0
+        {
+            let purchased: float;
+            pos = account.buy(sym, invest);
+
+            target_profit_value = pos.value() * (1 + profit_rate);
+            stop_loss_value = pos.value() * (1 - stop_loss);
+        }
+
+        state HOLD:
+            goto EXIT on dropped(Tickers[sym], change),
+            goto PROFIT on pos.value() >= target_profit_value;
+        
+        state EXIT:
+            goto INIT
+        {
+            pos = account.sell(sym, pos.shares);
+        }
+
+        state PROFIT:
+            goto HOLD
+        {
+            let ticker = Tickers[sym];
+            pos = account.sell(sym, target_profit_value / ticker.close);
+            target_profit_value = pos.value() * (1 + profit_rate);
+        }
+    }
+
+    process clock every 1 s {
+        static round = 1;
+
+        if true {%
+            printf("starting from round %d ...\n", round++);
+        %}
+
+        state INIT: goto NEXT {
+            if true {%
+                std::cout << "C++: INIT round " << round++ << std::endl;
+            %}
+        }
+
+        state NEXT: goto INIT {
+            if true {%
+                std::cout << "C++: NEXT round " << round++ << std::endl;
+            %}
+        }
+    }
+
+    process check(sym: Symbol) {
+        listen Tickers[sym];
+
+        state INIT: goto BUY on Tickers[sym] < 10;
+        state BUY: goto HOLD {
+            if true {%
+                std::cout << "buy\n";
+            %}
+        }
+        state HOLD: goto SELL on Tickers[sym] > 15;
+        state SELL: goto INIT {
+            if true {%
+                std::cout << "sell\n";
+            %}
+        }
+    }
+}
+
+// Two consequtive days positive
+event const_positive(const signal ticker: Ticker, percent: float) {    
+    for i in 0..2 {
+        if ticker[-i days] < ticker[-(i+1) days] {
+            return false;
+        }
+    }
+    return true;
+}
+
+// Price dropped by the given `percent`
+event dropped(const signal ticker: Ticker, percent: float) {
+    return ticker.history(2_days) <= ticker[-1 day] * ( 1 + percent );
+} 

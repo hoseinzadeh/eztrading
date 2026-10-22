@@ -1,0 +1,6 @@
+
+use std::*;
+
+machine Cool {
+    static signal Temp: Ticker;
+}

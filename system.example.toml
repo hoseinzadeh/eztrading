@@ -1,0 +1,81 @@
+name = "EZTrading System"
+
+# Copy this file to `system.toml` (git-ignored) and edit it. Paths are relative
+# to the directory you start `srvman` from, normally the repository root.
+# Replace 127.0.0.1 with the server's address when running on several machines,
+# and `user` with the account used to start the servers.
+
+[system]
+host = "127.0.0.1"
+
+# The scoket port for command communication
+port = 2022
+
+# The scoket port for listening to the heartbeats
+hb_port = 2023
+
+# The scoket port for the http server
+http_port = 8080
+
+# HeartBeat Monitoring Settings
+# The nubmer of seconds between each read to check if the server is alive
+interval  = 30
+
+# The number of seconds to call a server dead (shoud be a multiply of interval)
+timeout = 300
+
+[database]
+host = "127.0.0.1"
+port = 3306
+user = "root"
+pswd = "change-me" # your MySQL password
+
+# The user in sysman should be authorized in all servers
+[servers.datasrv]
+host = "127.0.0.1"
+port = 2021
+user = "your-user"
+exec = "./target/debug/datasrv"
+# Your Twelve Data key (https://twelvedata.com). Omit this line to use the
+# TWELVEDATA_API_KEY environment variable instead.
+apikey = "YOUR_TWELVEDATA_API_KEY"
+workspace = "/tmp/eztrading/data"
+
+[servers.jobsrv.1]
+host = "127.0.0.1"
+cap = 10
+user = "your-user"
+exec = "./target/debug/jobsrv"
+schlib = "./package/common/scheduler.dylib" # use .so on Linux
+
+[servers.jobsrv.2]
+host = "127.0.0.1"
+cap = 5
+user = "your-user"
+exec = "./target/debug/jobsrv"
+schlib = "./package/common/scheduler.dylib" # use .so on Linux
+
+[servers.jobsrv.3]
+host = "127.0.0.1"
+cap = 5
+user = "your-user"
+exec = "./target/debug/jobsrv"
+schlib = "./package/common/scheduler.dylib" # use .so on Linux
+
+[servers.codesrv.1]
+host = "127.0.0.1"
+port = 2024
+user = "your-user"
+exec = "./target/debug/codesrv"
+workspace = "/tmp/eztrading/codesrv"
+template = "./package"
+build_script = "./pack.sh"
+
+[servers.codesrv.2]
+host = "127.0.0.1"
+port = 2025
+user = "your-user"
+exec = "./target/debug/codesrv"
+workspace = "/tmp/eztrading/codesrv"
+template = "./package"
+build_script = "./pack.sh"

@@ -1,0 +1,159 @@
+
+\section{Overview}
+\label{sec:overview}
+
+This document serves as a comprehensive guide for the ezTrading project, outlining the system architecture, functionalities, and implementation details. The project aims to create an intelligent trading bot management platform that offers an intuitive user interface and a secure backend infrastructure.
+
+\subsection{Objectives}
+\label{sec:objectives}
+The project is set to be developed in three phases: 
+\begin{itemize}
+  \item MVP targeting the U.S. stock market with essential features.
+  \item Second phase with expanded features and data types like stock options, forex, and crypto.
+  \item Third phase aiming for global market integration.
+\end{itemize}
+
+
+\subsection{Requirements}
+\label{subsec:requirements}
+To meet its objectives, ezTrading has specific requirements for each component, as outlined below:
+
+\subsubsection{Backend Requirements}
+\begin{itemize}
+  \item Must support RESTful APIs secured by TLS and OAuth~2.0.
+  \item Scalability to accommodate a growing user base.
+  \item High-level database security measures.
+  \item Real-time data processing capabilities.
+  \item Support for third-party integrations for signal generation.
+\end{itemize}
+
+\subsubsection{Web App Requirements}
+\begin{itemize}
+  \item User-friendly dashboard for portfolio and bot management.
+  \item Comprehensive strategy builder functionalities.
+  \item Cross-browser compatibility.
+  \item Responsive design to adapt to various screen sizes.
+  \item Secure login with MFA.
+\end{itemize}
+
+\subsubsection{Mobile App Requirements}
+\begin{itemize}
+  \item Native apps for both Android and iOS platforms.
+  \item Real-time push notifications.
+  \item Quick order placement functionalities.
+  \item User interface consistency with the Web App.
+  \item Offline capabilities.
+\end{itemize}
+
+\subsection{Scope}
+The platform will be initially launched in the U.S. market and will gradually expand to include global financial markets. The MVP will contain essential features for trading in the U.S. stock market, and subsequent phases will introduce more functionalities and data types. The platform enables users to:
+
+\begin{itemize}
+  \item Analyze the market through enhanced charting, news feeds, and market evaluations.
+  \item Place online orders for trading different equities.
+  \item Create and configure automatic trading bots.
+  \item Test bots in a simulated environment.
+  \item Publish and monetize bots through a secure marketplace.
+  \item Subscribe to bots and modify their settings.
+\end{itemize}
+
+\subsection{Timeline and Budget}
+
+The development of the system is organized into three major phases as described in Section~\ref{sec:objectives}, each targeting specific features and user bases. Table~\ref{table:project-phases} provides an overview of the budget, deadlines, and essential features for each phase.
+
+\begin{table}[!ht]
+\centering
+\caption{Project Phases and Features}
+\label{table:project-phases}
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Parameter} & \textbf{Details} \\
+\hline
+\multicolumn{2}{|c|}{\textbf{Phase 1: MVP for U.S. Stock Market}} \\
+\hline
+Budget & \$25,000 (Web App) + \$5,000 (Mobile App)\\
+\hline
+Deadline & January 15, 2024 \\
+\hline
+Features & \begin{tabular}[c]{@{}l@{}}- U.S. Stock Market Data\\ - Web and Mobile App\\ - Strategy Builder\\ - Back Testing\\ - User Dashboard\\ - Marketplace\\ - Payout Mechanism via Direct Deposit and Wire Transfer\\ - Link to Tradier.com\end{tabular} \\
+\hline
+Target Users & U.S.-based Individual Traders \\
+\hline
+\multicolumn{2}{|c|}{\textbf{Phase 2: Expanded Features, Markets, and Link Accounts}} \\
+\hline
+Budget & \$5,000 \\
+\hline
+Deadline & February 28, 2024 \\
+\hline
+Features & \begin{tabular}[c]{@{}l@{}}- Stock Options, Forex, Crypto\\ - Enhanced Bot Algorithms\\ - Advanced Charting UI/UX\\ - Multiple Account Management\\ - Link to Fidelity, Vanguard, Charles Schwab, Bank of\\America/Merrill Lynch, J.P. Morgan, Robinhood,\\Morgan Stanley, E*Trade, and more (if they provide APIs)\\ - Link to Forex.com and more for \textit{currency exchange}\\ - Link to Coinbase and more for \textit{cryptocurrency exchange}\end{tabular} \\
+\hline
+Target Users & U.S.-based Individual Traders and Financial Institutions \\
+\hline
+\multicolumn{2}{|c|}{\textbf{Phase 3: Global Expansion}} \\
+\hline
+Budget & - \\
+\hline
+Deadline & June 30, 2024 \\
+\hline
+Features & \begin{tabular}[c]{@{}l@{}}- Global Stock Markets\\ - Multi-language Support\\ - Regulatory Compliances\\ - Link to Foreign Brokerage Accounts\end{tabular} \\
+\hline
+Target Users & Global Individual Traders and Financial Institutions \\
+\hline
+\end{tabular}
+\end{table}
+
+
+\subsection{Target Users}
+The system is designed to cater to a broad spectrum of users, from individual traders to developers and financial institutions. ezTrading serves five distinct user personas, each with unique needs and trading experience levels:
+
+\begin{itemize}
+    \item \textbf{New Enthusiasts}: Individuals new to trading, seeking a simple and educational starting point.
+    \item \textbf{Cautious Participants}: Those with some experience, seeking to minimize risks through automation and expert advice.
+    \item \textbf{Strategy Creators}: Experienced users keen on customizing and potentially monetizing their trading strategies.
+    \item \textbf{Trading Experts}: Highly knowledgeable traders seeking advanced tools and a platform for monetizing their strategies.
+    \item \textbf{Financial Professionals}: Wealth managers or financial firms requiring high computational power, robust reporting, and advanced account management features.
+\end{itemize}
+
+\subsection{Subscription Offerings}
+Table~\ref{tab:subscription_plans} details ezTrading's various subscription plans, each tailored to specific user needs. The user table within our database stores these plan limitations in a numerical format.
+
+\begin{table}[!ht]
+  \begin{adjustwidth}{-3cm}{-3cm}
+  \centering
+  \caption{Subscription Plans Comparison}
+  \label{tab:subscription_plans}
+  \begin{tabular}{|l|c|c|c|c|c|}
+  \hline
+  \textbf{Feature} & \textbf{Basic} & \textbf{Premium} & \textbf{Dev Starter} & \textbf{Dev Pro} & \textbf{Unlimited} \\
+  \hline
+  Trading Dashboard & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark \\
+  \hline
+  Bot Marketplace & \multirow{2}{*}{\checkmark} & \multirow{2}{*}{\checkmark} & \multirow{2}{*}{\checkmark} & \multirow{2}{*}{\checkmark} & \multirow{2}{*}{\checkmark} \\
+  Backtesting &  &  &  &  &  \\
+  \hline
+  Data Access Level & End-Of-Day & Realtime & Realtime & Realtime & Realtime \\
+  \hline
+  Active Trading Bots & 3 & 10 & 10 & 30 & Unlimited \\
+  \hline
+  Strategy Builder & 1 (Personal) & 1 (Personal) & 10 & 30 & Unlimited \\
+  \hline
+  Subscriber Limit & & & 20 & 100 & Unlimited \\
+  \hline
+  Smart Withdrawal &  & \multirow{2}{*}{1} & \multirow{2}{*}{1} & \multirow{2}{*}{10} & \multirow{2}{*}{Unlimited} \\
+  Setup &  &  &  &  &  \\
+  \hline
+  Multiple Account &  & \multirow{2}{*}{3} & \multirow{2}{*}{10} & \multirow{2}{*}{10} & \multirow{2}{*}{Unlimited} \\
+  Management &  &  &  &  &  \\
+  \hline
+  Comprehensive &  &  & \multirow{2}{*}{\checkmark} & \multirow{2}{*}{\checkmark} & \multirow{2}{*}{\checkmark} \\
+  Reporting &  &  &  &  &  \\
+  \hline
+  Live Collaboration &  &  &  & \checkmark & \checkmark \\
+  \hline
+  Community Access &  & \checkmark & \checkmark & \checkmark & \checkmark \\
+  \hline
+  Development Phase & MVP & MVP & MVP & Phase 2 & Phase 2 \\
+  \hline
+  \end{tabular}
+  \end{adjustwidth}
+\end{table}

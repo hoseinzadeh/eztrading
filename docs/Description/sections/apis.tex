@@ -1,0 +1,104 @@
+
+\section{API Endpoints}
+\label{sec:api-endpoints}
+
+\textcolor{red}{Review and complete this section}
+The ezTrading platform exposes various functionalities through RESTful APIs, which follow standard HTTPS methods for ease of integration and encrypted using TLS. To ensure secure communication, all API access is restricted to authenticated users through OAuth~2.0 tokens. This security mechanism ensures that each API request is authorized, providing an extra layer of protection for sensitive operations. Table~\ref{tab:api_endpoints} summarizes all APIs used in the system.
+
+\begin{table}[h]
+\begin{adjustwidth}{-3cm}{-3cm}
+\centering
+\caption{API Endpoints for Bot Management}
+\label{tab:api_endpoints}
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Action} & \textbf{API Endpoint} \\
+\hline
+\multicolumn{2}{|c|}{\textbf{User Bot Management}} \\
+\hline
+Retrieve a list of all active and inactive bots & \code{/user\_bots} \\
+\hline
+Modify the trading parameters of an existing bot & \code{/customize\_user\_bot} \\
+\hline
+Inactivate a bot & \code{/activate\_user\_bot} \\
+\hline
+Deactivate a bot & \code{/deactivate\_user\_bot} \\
+\hline
+Cancel subscription to an inactive bot & \code{/cancel\_user\_bot} \\
+\hline
+\multicolumn{2}{|c|}{\textbf{Bot Developement}} \\
+\hline
+Retrieve a list of all bots belonging to a developer & \code{/bot\_files} \\
+\hline
+Retrieve source file of a specific bot & \code{/load\_bot} \\
+\hline
+Modify an existing, unpublished bot & \code{/save\_bot} \\
+\hline
+Release a specific trading bot & \code{/publish} \\
+\hline
+Clone a bot to create a new bot with similar strategy & \code{/clone\_bot} \\
+\hline
+Delete an unpublished bot from the database & \code{/delete\_bot} \\
+\hline
+\end{tabular}
+\end{adjustwidth}
+\end{table}
+
+\subsection{User Bot Management}
+This set of APIs is specifically designed for bot management from the user's perspective. It enables users to keep track of their bots' states, whether they are active or inactive.
+
+\subsubsection{/user\_bots}
+\begin{tabular}{|l|p{10cm}|}
+\hline
+\textbf{Parameter} & \textbf{Description} \\
+\hline
+Arguments & None \\
+\hline
+Security Level & User Authenticated \\
+\hline
+Usage Example & \code{GET http://api.eztradinghub.com/user\_bots} \\
+\hline
+Example Response & \code{\{"bots": ["Bot1", "Bot2"]\}} \\
+\hline
+\end{tabular}
+
+% \subsection{Bot Files and Development}
+% These APIs facilitate bot development and maintenance. They allow for the retrieval, modification, and publication of bot source files, making it easier for developers to manage their projects.
+
+% \vspace{1em}
+% \begin{tabular}{|l|l|}
+% \hline
+% \textbf{Endpoint} & \textbf{Description} \\
+% \hline
+% \code{/bot\_files} & Retrieve a list of all bots owned by a developer \\
+% \code{/load\_bot} & Fetch the source file of a specific bot \\
+% \code{/save\_bot} & Modify an existing, unpublished bot \\
+% \code{/publish} & Release a specific trading bot \\
+% \hline
+% \end{tabular}
+
+% \subsection{Bot Customization}
+% This suite of APIs enables more fine-grained control over bot behavior and settings. Users can modify trading parameters, clone existing bots to create new ones, and delete bots that are still in development or are unpublished.
+
+% \vspace{1em}
+% \begin{tabular}{|l|l|}
+% \hline
+% \textbf{Endpoint} & \textbf{Description} \\
+% \hline
+% \code{/clone\_bot} & Clone a bot to create a new bot with similar strategy \\
+% \code{/delete\_bot} & Delete an unpublished bot \\
+% \hline
+% \end{tabular}
+
+% \subsection{Third-Party Integrations}
+% These APIs offer the ability to extend the functionality of the ezTrading platform by allowing third-party integrations. Users can set up inbound and outbound webhooks to send and receive trading signals, respectively.
+
+% \vspace{1em}
+% \begin{tabular}{|l|l|}
+% \hline
+% \textbf{Endpoint} & \textbf{Description} \\
+% \hline
+% \code{/inbound\_webhook} & Receive third-party signals for bot actions \\
+% \code{/outbound\_webhook} & Send bot signals to third-party services \\
+% \hline
+% \end{tabular}

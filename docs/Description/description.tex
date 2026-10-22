@@ -1,0 +1,91 @@
+\documentclass[12pt]{article}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{amsfonts}
+\usepackage{changepage}
+\usepackage{fancyhdr}
+\usepackage{adjustbox}
+\usepackage{svg}
+\usepackage{listings}
+\usepackage[T1]{fontenc}
+\usepackage{floatrow}
+\usepackage{subcaption}
+\usepackage{tcolorbox}
+\usepackage{multirow}
+\usepackage{circledsteps}
+\usepackage{ulem}
+
+
+\setlength{\headheight}{14.49998pt}
+\addtolength{\topmargin}{-2.49998pt}
+
+
+\title{\adjustimage{margin=0 0 0 -3cm, valign=c, width=8cm}{logo.png}\\Project Description}
+\author{Morteza Hoseinzadeh}
+\date{\today}
+
+
+\pagestyle{fancy}
+\fancyhf{} % Clear existing header and footer
+
+\lhead{\adjustimage{margin=0 0 0 -3cm, valign=c, width=2cm}{logo.png}} % Left header
+\chead{\textsc{Project Description}}
+\rhead{\thepage}
+\cfoot{\tiny{Confidential Internal -- Do not distribute}}
+
+\newcommand{\svgicon}[2][.2]{\hspace{.1em}\raisebox{-#1\height}{\includesvg{#2}}\hspace{.1em}}
+\newcommand{\code}{\texttt}
+\newcommand{\error}[1]{\textcolor{red}{\uwave{\textcolor{black}{#1}}}}
+
+\colorlet{punct}{red!60!black}
+\definecolor{background}{HTML}{EEEEEE}
+\definecolor{delim}{RGB}{20,105,176}
+\colorlet{numb}{magenta!60!black}
+
+\lstdefinelanguage{json}{
+    basicstyle=\normalfont\ttfamily,
+    numbers=left,
+    numberstyle=\scriptsize,
+    stepnumber=1,
+    numbersep=8pt,
+    showstringspaces=false,
+    breaklines=true,
+    frame=lines,
+    backgroundcolor=\color{background},
+    literate=
+     *{0}{{{\color{numb}0}}}{1}
+      {1}{{{\color{numb}1}}}{1}
+      {2}{{{\color{numb}2}}}{1}
+      {3}{{{\color{numb}3}}}{1}
+      {4}{{{\color{numb}4}}}{1}
+      {5}{{{\color{numb}5}}}{1}
+      {6}{{{\color{numb}6}}}{1}
+      {7}{{{\color{numb}7}}}{1}
+      {8}{{{\color{numb}8}}}{1}
+      {9}{{{\color{numb}9}}}{1}
+      {:}{{{\color{punct}{:}}}}{1}
+      {,}{{{\color{punct}{,}}}}{1}
+      {\{}{{{\color{delim}{\{}}}}{1}
+      {\}}{{{\color{delim}{\}}}}}{1}
+      {[}{{{\color{delim}{[}}}}{1}
+      {]}{{{\color{delim}{]}}}}{1},
+}
+
+\begin{document}
+
+\maketitle
+
+\tableofcontents
+
+\input{sections/intro}
+\input{sections/overview}
+\input{sections/arch}
+\input{sections/strategy-builder}
+\input{sections/trade-dash}
+\input{sections/bot-dash}
+\input{sections/mobile}
+\input{sections/outsrc}
+\input{sections/conclude}
+
+
+\end{document}

@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html>
+<style>
+    html {
+        font-family: sans-serif;
+        line-height: 1.15;
+        text-size-adjust: 100%;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+        margin: 0;
+        font-family: Montserrat, sans-serif;
+        font-size: 1rem;
+        font-weight: 400;
+        line-height: 1.5;
+        color: #212529;
+        text-align: left;
+        background-color: #fff;
+        line-height: 17px;
+    }
+
+
+    div {
+        display: block;
+    }
+
+    *,
+    :after,
+    :before {
+        box-sizing: border-box;
+        line-height: 17px;
+        text-align: left;
+    }
+
+    .card {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        word-wrap: break-word;
+        background-color: #fff;
+        background-clip: border-box;
+        width: 130px;
+    }
+
+    /* Clear floats after the columns */
+    .row {
+        display: flex;
+    }
+
+    #status .card-body .symbol {
+        font-weight: 500;
+        font-size: 14px;
+        line-height: 17px;
+        color: rgba(29, 29, 31, .6);
+        margin-bottom: 10px;
+    }
+
+    #status .card-body .diff {
+        color: #2cc97e;
+        font-size: 0.8rem;
+        position: relative;
+    }
+
+    #status .card-body .prices>div {
+        display: inline-block;
+    }
+
+    #status .card-body .percent {
+        color: #2cc97e;
+        margin-right: 4px;
+        font-size: 0.8rem;
+    }
+
+    #status .card-body {
+        padding: 0;
+    }
+
+    #status .card-body .price {
+        font-weight: 700;
+        color: #1d1d1f;
+        margin-right: 8px;
+        font-size: 20px;
+    }
+
+    .card-body {
+        flex: 1 1 auto;
+        min-height: 1px;
+        padding: 1.25rem;
+    }
+
+    #status .prices.down .diff,
+    #status .prices.down .percent {
+        color: #e3342f;
+    }
+
+    .twl-cources {
+        display: flex;
+        flex-wrap: wrap;
+        border-left: 1px solid #f5f5f5;
+        border-right: 1px solid #f5f5f5;
+        position: relative;
+    }
+
+    *,
+    :after,
+    :before {
+        box-sizing: border-box;
+    }
+
+    user agent stylesheet div {
+        display: block;
+    }
+
+    html {
+        font-family: sans-serif;
+        line-height: 1.15;
+        text-size-adjust: 100%;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    *,
+    :after,
+    :before {
+        box-sizing: border-box;
+    }
+
+    .twl-cources:after {
+        content: "";
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        height: 1px;
+        background: #f5f5f5;
+    }
+
+    .cources>div,
+    .cources>div .card {
+        background-color: #f5f5f5;
+    }
+
+    .cources>div {
+        border: 1px solid #f5f5f5;
+        border-top: none;
+        border-left: none;
+        padding: 10px 15px;
+        transition: background .2s ease;
+    }
+</style>
+<script>
+    const map1 = new Map();
+    function new_contents(symbol, price, open_price) {
+        var sym = document.createElement("div");
+        sym.className = "symbol";
+        sym.textContent = symbol;
+
+        var pr = document.createElement("div");
+        pr.className = "price";
+        pr.textContent = `$${price.toFixed(2)}`;
+
+        var per = document.createElement("div");
+        per.className = "percent";
+        per.textContent = `${(((price / open_price)-1) * 100).toFixed(2)}%`;
+
+        var dif = document.createElement("div");
+        dif.className = "diff";
+        
+        var pr_box = document.createElement("div");
+        if (price >= open_price) {
+            dif.textContent = `$${(price - open_price).toFixed(2)}`;
+            pr_box.className = "prices";
+        } else {
+            dif.textContent = `($${(open_price - price).toFixed(2)})`;
+            pr_box.className = "prices down";
+        }
+        pr_box.appendChild(pr);
+        pr_box.appendChild(document.createElement("br"));
+        pr_box.appendChild(per);
+        pr_box.appendChild(dif);
+
+        var body = document.createElement("div");
+        body.className = "card-body";
+        body.appendChild(sym);
+        body.appendChild(pr_box);
+
+        var card = document.createElement("div");
+        card.className = "card";
+        card.appendChild(body);
+        return card;
+    }
+
+    function update(symbol, price) {
+        if (map1.has(symbol)) {
+            let box_id = map1.get(symbol);
+            let box = document.getElementById(box_id);
+            box.innerHTML = '';
+            box.appendChild(new_contents(symbol, price, 100));
+        } else {
+            let box = document.createElement("div");
+            box.id = `symbol_${symbol}_card`;
+            map1.set(symbol, box.id);
+            box.appendChild(new_contents(symbol, price, 100));
+            document.getElementById("status").appendChild(box);
+        }
+    }
+</script>
+
+<body>
+    <div class="twl-cources cources" id="status">
+    </div>
+    <script>
+        // function update_oracle(price) {
+        //     update('ORCL', price);
+        //     setTimeout(update_oracle, 1000, price + 1.2);
+        // }
+        // update_oracle(95)
+    </script>
+</body>
+
+</html>

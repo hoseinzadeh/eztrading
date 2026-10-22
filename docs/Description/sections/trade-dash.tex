@@ -1,0 +1,107 @@
+\section{Trading Dashboard}
+
+The `Trading Dashboard' serves as the focal point for all trading activities within the platform. Positioned predominantly at the center of the interface, it provides a comprehensive and customizable view of the user's trading account and activities.
+
+\subsection{Functional Components}
+
+The dashboard is modular and is composed of several functional components:
+
+\begin{itemize}
+  \item \textbf{Portfolio Overview}: This section displays the current state of the user's portfolio, including assets held, their market value, and overall portfolio performance.
+  
+  \item \textbf{Order Panel}: Here, users can manually place market, limit, and stop orders. The panel also allows for complex orders like options contracts or stop-loss setups.
+  
+  \item \textbf{Market Watch}: This section provides real-time price feeds for stocks, ETFs, cryptocurrencies, and other assets. Users can customize this area to only display assets they are interested in.
+  
+  \item \textbf{Trade History}: A chronological log of all executed trades, pending orders, and canceled orders, complete with pertinent details like execution price and time.
+  
+  \item \textbf{Bot Management}: This area allows users to control and monitor the trading bots they have activated. It shows the current state, performance metrics, and offers controls to start or stop the bots.
+\end{itemize}
+
+\subsubsection{Charting Capabilities}
+\label{sec:charting}
+
+The dashboard presents two charting alternatives to accommodate the diverse preferences and needs of our user base:
+
+\begin{itemize}
+    \item \textbf{Basic Chart View (Default)}: This is the default view for live portfolio monitoring. The Basic Chart View is crafted for users who prefer a straightforward and easy-to-understand chart without additional functionalities like zoom, pan, or technical indicators. Users can toggle the time span of the chart between options like 1 day, 1 week, and so on. The chart also allows users to add multiple equities to it for a side-by-side performance comparison. Additionally, users have the option to track the performance of individual bots by displaying multiple charts in the same view.
+
+
+    \item \textbf{Advanced Chart View}: Catering to traders who require a more intricate and customizable charting experience, this feature integrates a component from TradingView. This provides an array of sophisticated functionalities like zooming, panning, and applying various technical indicators.
+\end{itemize}
+
+\subsection{Interactivity}
+
+The `Trading Dashboard' is highly interactive, enabling users to:
+
+\begin{itemize}
+  \item Drag-and-drop elements to rearrange the dashboard layout according to their preferences.
+  
+  \item Click on asset names or tickers in the Market Watch section to populate the Order Panel automatically.
+  
+  \item Hover over different components to reveal additional information, context menus, or action buttons.
+\end{itemize}
+
+\subsection{Customization}
+
+Users have the ability to customize the `Trading Dashboard' to their needs:
+
+\begin{itemize}
+  \item Widgets can be added or removed to focus on the most relevant information.
+  
+  \item Settings can be tweaked to control the update frequency of various components like the Market Watch or Portfolio Overview.
+\end{itemize}
+
+\subsection{Search and Filter Capabilities}
+\label{sec:search-filter-ui}
+
+The `Trading Dashboard' incorporates an advanced search and filter engine, designed to provide users with quick and accurate retrieval of information from a plethora of data points. This functionality exists in two primary areas:
+
+\begin{itemize}
+  \item \textbf{Equity Search and Filter}: The dashboard allows for an intuitive yet powerful search within the Market Watch and Portfolio Overview sections. Users can filter equities based on sectors, volatility, market cap, and other custom criteria. A predictive search bar also helps users find specific stocks or ETFs by name, ticker, or ISIN code.
+
+  \item \textbf{Bot Search and Filter}: Within the Bot Marketplace area, users have the capacity to search and filter bots based on various metrics such as performance, risk level, strategy type, and users reviews. The system also enables tagging and categorization, so users can create custom groups or lists of bots to monitor or control collectively. This feature can be used for the following operations:
+  \begin{itemize}
+    \item \textit{Bot Subscription}: After finding a bot through the search functionality, users can directly subscribe to it, adding it to their list of active bots.
+  
+    \item \textit{Bot Comparison}: The dashboard allows users to compare up to five bots simultaneously using a specific set of parameter settings, provided they share the same parameters. This offers a more tailored and in-depth comparison, beyond the default settings used in the search results.
+
+    \item \textit{Bot Watchlist}: Users can add bots to a watchlist for easy monitoring without full subscription. This feature allows them to keep track of bots they are interested in but are not yet ready to commit to.
+  \end{itemize}
+\end{itemize}
+
+The search and filter mechanisms are built for speed and are capable of searching through large datasets in real-time. This ensures that users can always find the assets or bots they are interested in, without wading through irrelevant information.
+
+\subsection{Bot Marketplace with Backtesting}
+\label{sec:marketplace}
+Within the ezTrading Trading Dashboard, we offer a dynamic environment that seamlessly integrates a Bot Marketplace and Backtesting capabilities. This unique combination empowers traders and developers to create, test, and optimize trading bots efficiently.
+
+\subsubsection{Bot Marketplace}
+The Bot Marketplace is a hub of trading strategies and algorithms developed by a diverse community of traders and developers. Users can explore a wide range of pre-built bots, each designed to address specific trading objectives and market conditions. Key features of the Bot Marketplace include:
+
+\begin{itemize}
+  \item \textbf{Bot Discovery}: Browse and search for trading bots based on various criteria, such as asset classes, risk profiles, and performance metrics.
+  \item \textbf{Bot Details}: Access comprehensive information about each bot, including its trading strategy, historical performance, and user reviews.
+  \item \textbf{One-Click Integration}: Seamlessly add a selected bot to your trading strategy with a single click, making it an integral part of your portfolio.
+  \item \textbf{User Ratings}: Benefit from the collective wisdom of the community by viewing user ratings and reviews to make informed decisions.
+  \item \textbf{Developer Insights}: Gain insights into the developers behind each bot, their track record, and their approach to trading.
+\end{itemize}
+
+\subsubsection{Backtesting}
+The Backtesting feature within the Trading Dashboard is a powerful tool for evaluating trading strategies and assessing their historical performance. It allows users to simulate how a trading bot would have performed in the past, providing valuable insights into its potential effectiveness. Key aspects of Backtesting include:
+
+\begin{itemize}
+  \item \textbf{Historical Data}: Access a comprehensive database of historical market data, covering a wide range of asset classes and time periods.
+  \item \textbf{Scenario Testing}: Create custom scenarios by adjusting various parameters, such as starting capital, risk management settings, and trading frequency.
+  \item \textbf{Performance Metrics}: Analyze the bot's performance using a variety of metrics, including profit and loss, win rate, and risk-adjusted returns.
+  \item \textbf{Optimization}: Refine your trading strategy by fine-tuning parameters and assessing their impact on historical results.
+  \item \textbf{Scenario Comparison}: Compare the performance of multiple scenarios and choose the one that aligns best with your trading goals.
+\end{itemize}
+
+The integration of the Bot Marketplace and Backtesting within the Trading Dashboard empowers traders to harness the collective wisdom of the community, explore diverse trading strategies, and make data-driven decisions when creating and optimizing their own bots.
+
+
+\subsection{Information Icons}
+
+Just like other sections of the UI, each main component within the `Trading Dashboard' features an information icon \Circled{\textit{i}}. Hovering over these icons displays tooltips that offer concise explanations of the functionalities and features of that particular component.
+

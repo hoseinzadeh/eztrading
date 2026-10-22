@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Build the workspace
+        run: cargo build --workspace
+      - name: Test
+        run: cargo test --workspace
+      - name: Compile the example strategies
+        run: |
+          cargo run -q -p agent -- check examples/threshold.sm
+          cargo run -q -p agent -- check examples/momentum.sm
+          cargo run -q -p agent -- check examples/bracket.sm
+          cargo run -q -p agent -- check tests/example.sm
+      - name: Syntax-check the Studio front end
+        run: |
+          node --check core/studio/assets/app.js
+          node --check core/studio/assets/sml-language.js

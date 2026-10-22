@@ -1,0 +1,45 @@
+{
+  "name": "tradier-sandbox",
+  "description": "Tradier sandbox (US stocks). Env: TRADIER_TOKEN and TRADIER_ACCOUNT from your Tradier sandbox account. Written from Tradier's public API description; check it with the Test button before relying on it.",
+  "environment": "paper",
+  "base_url": "https://sandbox.tradier.com",
+  "headers": { "Authorization": "Bearer ${TRADIER_TOKEN}", "Accept": "application/json" },
+  "limits": { "max_order_value": 2000, "max_position_value": 5000, "max_orders": 200 },
+  "account": {
+    "path": "/v1/accounts/${TRADIER_ACCOUNT}/balances",
+    "at": "balances",
+    "map": { "cash": "total_cash", "equity": "total_equity" }
+  },
+  "positions": {
+    "path": "/v1/accounts/${TRADIER_ACCOUNT}/positions",
+    "at": "positions.position",
+    "map": { "symbol": "symbol", "qty": "quantity" }
+  },
+  "quote": {
+    "path": "/v1/markets/quotes",
+    "query": { "symbols": "{symbol}" },
+    "at": "quotes.quote",
+    "map": { "last": "last", "bid": "bid", "ask": "ask" }
+  },
+  "place_order": {
+    "path": "/v1/accounts/${TRADIER_ACCOUNT}/orders",
+    "body_format": "form",
+    "refetch": true,
+    "at": "order",
+    "market": { "class": "equity", "symbol": "{symbol}", "side": "{side}", "quantity": "{qty}", "type": "market", "duration": "{tif}", "tag": "{client_id}" },
+    "limit": { "class": "equity", "symbol": "{symbol}", "side": "{side}", "quantity": "{qty}", "type": "limit", "price": "{limit}", "duration": "{tif}", "tag": "{client_id}" },
+    "stop": { "class": "equity", "symbol": "{symbol}", "side": "{side}", "quantity": "{qty}", "type": "stop", "stop": "{stop}", "duration": "{tif}", "tag": "{client_id}" }
+  },
+  "cancel_order": { "method": "DELETE", "path": "/v1/accounts/${TRADIER_ACCOUNT}/orders/{id}" },
+  "order": { "path": "/v1/accounts/${TRADIER_ACCOUNT}/orders/{id}", "at": "order" },
+  "open_orders": { "path": "/v1/accounts/${TRADIER_ACCOUNT}/orders", "at": "orders.order" },
+  "order_map": {
+    "id": "id", "client_id": "tag", "symbol": "symbol", "side": "side", "qty": "quantity",
+    "filled_qty": "exec_quantity", "avg_price": "avg_fill_price", "state": "status"
+  },
+  "states": {
+    "ok": "open", "open": "open", "pending": "open", "partially_filled": "partially_filled", "filled": "filled",
+    "canceled": "canceled", "expired": "expired", "rejected": "rejected", "error": "rejected"
+  },
+  "vocab": { "day": "day", "gtc": "gtc" }
+}

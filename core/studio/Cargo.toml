@@ -1,0 +1,28 @@
+[package]
+name = "studio"
+version = "0.1.0"
+edition = "2021"
+description = "Strategy Studio: a browser editor for SML with live diagnostics, state diagrams, backtests and tests"
+
+[lib]
+name = "studio"
+path = "src/lib.rs"
+
+[[bin]]
+name = "ezt-studio"
+path = "src/main.rs"
+
+[dependencies]
+pest = "2"
+pest_derive = "2"
+serde = { workspace = true }
+serde_json = { workspace = true, features = ["float_roundtrip"] }
+reqwest = { workspace = true }
+clap = { workspace = true }
+actix-web = { workspace = true }
+tokio = { workspace = true }
+ezt_agent = { package = "agent", path = "../agent" }
+ezt_broker = { package = "broker", path = "../broker" }
+
+[dev-dependencies]
+tempfile = "3"
